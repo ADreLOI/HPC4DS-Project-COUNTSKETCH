@@ -53,3 +53,9 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+build/
+
+.vscode/
+
+CMakeLists.txt
