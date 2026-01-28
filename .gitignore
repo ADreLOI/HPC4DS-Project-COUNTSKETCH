@@ -58,6 +58,4 @@ build/
 
 .vscode/
 
-CMakeLists.txt
-
 key.txt
