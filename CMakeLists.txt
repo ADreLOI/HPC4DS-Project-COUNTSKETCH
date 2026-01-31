@@ -25,6 +25,7 @@ file(GLOB SEQ_SRC "src/*.c")
 if(SEQ_SRC)
     add_executable(app_seq ${SEQ_SRC})
     # Link alla libreria matematica se serve (-lm)
+    target_link_libraries(app_seq PRIVATE MPI::MPI_C)
     target_link_libraries(app_seq PRIVATE m)
     
     # Se il sequenziale usa OpenMP (es. per testare solo le pragma senza MPI)
