@@ -56,12 +56,22 @@
    Possible collisions: If width is too small, estimates will be bad.
    For 1M items with w=64: ~15,000 items per bucket (BAD)
    For 1M items with w=4096: ~244 items per bucket (GOOD)
+   For fair comparison with Hybrid implementation:
+   - depth = 5 (number of hash functions)
+   - width = 1000 (buckets per row)
+   
+   TIMING NOTE FOR REPORT:
+   - time_compute: The "pure computation" time (each rank's update loop ONLY)
+   - time_total: Includes ALL overhead (read, scatter, reduce, estimate)
+   
+   Your teammate measures compute-only to exclude communication overhead.
+   For the report, show BOTH timings to analyze communication vs computation.
 */
-#define CS_DEPTH 9       // Rows - controls accuracy (odd number for clean median)
-#define CS_WIDTH 4096    // Buckets per row - MUST be large enough for your data!
+#define CS_DEPTH_DEFAULT 5       // Default depth (teammate's setting)
+#define CS_WIDTH_DEFAULT 1000    // Default width (teammate's setting)
 
-/* Data format */
-#define MAX_ITEM_LEN 256  // Maximum length of each item string
+/* Data format - teammate uses 64 */
+#define MAX_ITEM_LEN 64  // Maximum length of each item string
 
 /* Files */
 #define DEFAULT_OUTPUT "results/estimates.txt"
@@ -187,7 +197,12 @@ int main(int argc, char** argv)
 {
     // STEP 0: Parse command-line arguments
     if (argc < 2) {
-        fprintf(stderr, "Usage: mpirun -np <P> %s <input_file> [--benchmark]\n", argv[0]);
+        fprintf(stderr, "Usage: mpirun -np <P> %s <input_file> [options]\n", argv[0]);
+        fprintf(stderr, "Options:\n");
+        fprintf(stderr, "  --benchmark        Enable timing output\n");
+        fprintf(stderr, "  --depth <d>        Sketch depth (default: %d)\n", CS_DEPTH_DEFAULT);
+        fprintf(stderr, "  --width <w>        Sketch width (default: %d)\n", CS_WIDTH_DEFAULT);
+        fprintf(stderr, "  --output <file>    Output file for estimates\n");
         return EXIT_FAILURE;
     }
     
@@ -195,12 +210,20 @@ int main(int argc, char** argv)
     int benchmark_mode = 0;
     const char *output_file = DEFAULT_OUTPUT;
     
+    // Count Sketch parameters - use defaults, allow override via CLI
+    int cs_depth = CS_DEPTH_DEFAULT;
+    int cs_width = CS_WIDTH_DEFAULT;
+    
     // Parse optional arguments
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "--benchmark") == 0) {
             benchmark_mode = 1;
         } else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc) {
             output_file = argv[++i];
+        } else if (strcmp(argv[i], "--depth") == 0 && i + 1 < argc) {
+            cs_depth = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--width") == 0 && i + 1 < argc) {
+            cs_width = atoi(argv[++i]);
         }
     }
     
@@ -211,12 +234,20 @@ int main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     
+    // Print config info (rank 0 only)
+    if (world_rank == 0) {
+        printf("=== MPI Count Sketch Config ===\n");
+        printf("Processes: %d\n", world_size);
+        printf("Depth: %d, Width: %d\n", cs_depth, cs_width);
+        printf("Input: %s\n", input_file);
+        printf("===============================\n");
+    }
+    
     // Print process info -- debugging
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
     printf("MPI Process %d of %d on %s\n", world_rank, world_size, processor_name);
-    
     // Initialize timing struct
     BenchmarkTimings timings = {0};
     double t_start, t_end;
@@ -225,7 +256,7 @@ int main(int argc, char** argv)
     // STEP 2: Rank 0 reads data and generates seeds
     char *all_items = NULL;    // Only rank 0 allocates this
     int n_items = 0;
-    uint32_t *seeds = (uint32_t *)malloc(CS_DEPTH * sizeof(uint32_t));
+    uint32_t *seeds = (uint32_t *)malloc(cs_depth * sizeof(uint32_t));
     
     if (world_rank == 0) {
         t_start = MPI_Wtime();
@@ -240,7 +271,7 @@ int main(int argc, char** argv)
         // Generate random seeds for hash functions
         // Using fixed seed for reproducibility in benchmarks
         srand(42);
-        for (int i = 0; i < CS_DEPTH; i++) {
+        for (int i = 0; i < cs_depth; i++) {
             seeds[i] = rand();
         }
         
@@ -256,7 +287,7 @@ int main(int argc, char** argv)
     MPI_Bcast(&n_items, 1, MPI_INT, 0, MPI_COMM_WORLD);
     
     // Broadcast seeds (all ranks need identical hash functions!)
-    MPI_Bcast(seeds, CS_DEPTH, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+    MPI_Bcast(seeds, cs_depth, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
     
     t_end = MPI_Wtime();
     timings.time_bcast = t_end - t_start;
@@ -337,7 +368,7 @@ int main(int argc, char** argv)
     t_start = MPI_Wtime();
     
     // Create local Count Sketch with shared seeds
-    CountSketch *local_cs = cs_create_with_seeds(CS_DEPTH, CS_WIDTH, seeds);
+    CountSketch *local_cs = cs_create_with_seeds(cs_depth, cs_width, seeds);
     if (!local_cs) {
         fprintf(stderr, "Rank %d: ERROR creating Count Sketch\n", world_rank);
         MPI_Abort(MPI_COMM_WORLD, 1);
@@ -362,7 +393,7 @@ int main(int argc, char** argv)
     t_start = MPI_Wtime();
     
     // Flatten local table to 1D for MPI communication
-    int table_size = CS_DEPTH * CS_WIDTH;
+    int table_size = cs_depth * cs_width;
     int32_t *local_flat = cs_flatten(local_cs);
     
     // Allocate receive buffer at rank 0 only
@@ -412,7 +443,7 @@ int main(int argc, char** argv)
         t_start = MPI_Wtime();
         
         // Reconstruct Count Sketch from flattened result
-        CountSketch *final_cs = cs_unflatten(result_flat, CS_DEPTH, CS_WIDTH, seeds);
+        CountSketch *final_cs = cs_unflatten(result_flat, cs_depth, cs_width, seeds);
         if (!final_cs) {
             fprintf(stderr, "ERROR: Failed to unflatten result\n");
             MPI_Abort(MPI_COMM_WORLD, 1);
