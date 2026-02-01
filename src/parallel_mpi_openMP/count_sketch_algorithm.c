@@ -4,7 +4,6 @@
 #include <string.h>
 #include <omp.h>
 // Hybrid implementation of Count Sketch Algorithm using MPI + OpenMP
-#define MAX_ITEM_LENGTH 256
 
 // Internal FNV-1a Hash helper
 static uint32_t hash_fnv1a(const char *key, uint32_t seed)

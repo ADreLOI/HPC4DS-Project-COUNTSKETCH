@@ -7,7 +7,7 @@
 #include <sys/time.h>
 #include <string.h>
 
-#define MAX_ITEM_LENGTH 256
+#define MAX_ITEM_LENGTH 64
 
 int main(int argc, char** argv) 
 {
@@ -98,7 +98,6 @@ int main(int argc, char** argv)
     }
     MPI_Bcast(local_cs->seeds, depth, MPI_UINT32_T, 0, MPI_COMM_WORLD);
 
-    wt1 = MPI_Wtime();
     //Scatter
     MPI_Scatter(global_data, chunk_size * MAX_ITEM_LENGTH, MPI_CHAR,
                 local_data, chunk_size * MAX_ITEM_LENGTH, MPI_CHAR,
@@ -108,13 +107,13 @@ int main(int argc, char** argv)
     //Update local sketch in parallel using OpenMP
     omp_set_num_threads(16); //Set number of threads, can be adjusted
 
-
+    wt1 = MPI_Wtime();
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < chunk_size; i++)
     {
         cs_update(local_cs, &local_data[i * MAX_ITEM_LENGTH]);   
     }
-
+    wt2 = MPI_Wtime();
     // 6. Reduce (Using a contiguous block for the table)
     CountSketch *final_sketch = NULL;
     if (my_rank == 0) 
@@ -125,7 +124,6 @@ int main(int argc, char** argv)
 
     MPI_Reduce(local_cs->table[0], (my_rank == 0) ? final_sketch->table[0] : NULL, 
            depth * width, MPI_INT32_T, MPI_SUM, 0, MPI_COMM_WORLD);
-    wt2 = MPI_Wtime();
 
     if(my_rank == 0)
     {

@@ -5,7 +5,7 @@
 #include <time.h>
 #include <mpi.h>
 
-#define MAX_ITEM_LENGTH 256
+#define MAX_ITEM_LENGTH 64
 
 int main(int argc, char** argv) 
 {
@@ -44,6 +44,8 @@ int main(int argc, char** argv)
         total_lines++;
     }
 printf("Total lines in input file: %d\n", total_lines);
+
+    rewind(file); // Torna all'inizio del file
     char* items = malloc(total_lines * MAX_ITEM_LENGTH);
     int i = 0;
     while (fgets(item, sizeof(item), file))
@@ -67,15 +69,10 @@ printf("Total lines in input file: %d\n", total_lines);
     for (int j = 0; j < i; j++) 
     {
         int32_t estimate = cs_estimate(cs, &items[j * MAX_ITEM_LENGTH]);
-        printf("Estimated frequency of %s: %d\n", &items[j * MAX_ITEM_LENGTH], estimate);
-        //Print in the file estimates.txt
-        FILE *est_file = fopen("results/estimates.txt", "a");
-        if (est_file == NULL)
+        if(i<10)
         {
-            perror("Unable to open estimates file!");
-            return EXIT_FAILURE;
+            printf("Estimated frequency of %s: %d\n", &items[j * MAX_ITEM_LENGTH], estimate);
         }
-        fclose(est_file);
     }
     printf("Time taken for updates: %f seconds\n", (wt2 - wt1));
     cs_destroy(cs); // Free allocated memory
