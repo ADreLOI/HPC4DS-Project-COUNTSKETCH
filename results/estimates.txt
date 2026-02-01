@@ -1,118 +1,102 @@
-Estimated frequency of item_5: 5
-Estimated frequency of item_21: 2
-Estimated frequency of item_5: 5
-Estimated frequency of item_5: 5
-Estimated frequency of item_21: 1
-Estimated frequency of item_23: 2
-Estimated frequency of item_3: 11
-Estimated frequency of item_4: 5
-Estimated frequency of item_4: 5
-Estimated frequency of item_2: 15
-Estimated frequency of item_1052: 1
-Estimated frequency of item_2: 15
-Estimated frequency of item_82: 1
-Estimated frequency of item_12756: 1
-Estimated frequency of item_2: 15
-Estimated frequency of item_301: 1
-Estimated frequency of item_3: 11
-Estimated frequency of item_4: 5
-Estimated frequency of item_5: 6
-Estimated frequency of item_21: 3
-Estimated frequency of item_23: 2
-Estimated frequency of item_3: 12
-Estimated frequency of item_4: 5
-Estimated frequency of item_4: 5
-Estimated frequency of item_2: 16
-Estimated frequency of item_1052: 1
-Estimated frequency of item_2: 16
-Estimated frequency of item_82: 2
-Estimated frequency of item_12756: 1
-Estimated frequency of item_2: 16
-Estimated frequency of item_301: 2
-Estimated frequency of item_3: 12
-Estimated frequency of item_4: 5
-Estimated frequency of item_143: 2
-Estimated frequency of item_9: 1
-Estimated frequency of item_4: 5
-Estimated frequency of item_218: 2
-Estimated frequency of item_10: 3
-Estimated frequency of item_698: 1
-Estimated frequency of item_11641: 3
-Estimated frequency of item_2474: 1
-Estimated frequency of item_2: 16
-Estimated frequency of item_13: 1
-Estimated frequency of item_6: 2
-Estimated frequency of item_8: 3
-Estimated frequency of item_12: 2
-Estimated frequency of item_2136: 1
-Estimated frequency of item_7: 2
-Estimated frequency of item_2223: 1
-Estimated frequency of item_2: 16
-Estimated frequency of item_12: 2
-Estimated frequency of item_17: 1
-Estimated frequency of item_44656: 2
-Estimated frequency of item_24342: 2
-Estimated frequency of item_3: 12
-Estimated frequency of item_15: 1
-Estimated frequency of item_5: 6
-Estimated frequency of item_16030: 2
-Estimated frequency of item_18: 1
-Estimated frequency of item_55: 2
-Estimated frequency of item_9412: 2
-Estimated frequency of item_27505: 2
-Estimated frequency of item_10: 3
-Estimated frequency of item_5: 6
-Estimated frequency of item_4: 5
-Estimated frequency of item_206: 1
-Estimated frequency of item_31: 2
-Estimated frequency of item_3: 12
-Estimated frequency of item_5110: 2
-Estimated frequency of item_2: 16
-Estimated frequency of item_8: 3
-Estimated frequency of item_51: 2
-Estimated frequency of item_3: 12
-Estimated frequency of item_44002: 1
-Estimated frequency of item_137: 1
-Estimated frequency of item_2: 16
-Estimated frequency of item_3: 12
-Estimated frequency of item_254: 2
-Estimated frequency of item_147: 1
-Estimated frequency of item_52: 3
-Estimated frequency of item_38: 2
-Estimated frequency of item_1960: 1
-Estimated frequency of item_5849: 2
-Estimated frequency of item_869: 2
-Estimated frequency of item_3: 12
-Estimated frequency of item_138: 1
-Estimated frequency of item_54: 3
-Estimated frequency of item_3: 12
-Estimated frequency of item_706: 2
-Estimated frequency of item_53: 2
-Estimated frequency of item_3: 12
-Estimated frequency of item_51: 2
-Estimated frequency of item_3: 12
-Estimated frequency of item_7567: 1
-Estimated frequency of item_26: 1
-Estimated frequency of item_3: 12
-Estimated frequency of item_558: 2
-Estimated frequency of item_44265: 1
-Estimated frequency of item_5: 6
-Estimated frequency of item_19547: 2
-Estimated frequency of item_2: 16
-Estimated frequency of item_20831: 2
-Estimated frequency of item_2: 16
-Estimated frequency of item_27: 2
-Estimated frequency of item_2: 16
-Estimated frequency of item_10: 3
-Estimated frequency of item_19225: 3
-Estimated frequency of item_36710: 1
-Estimated frequency of item_34: 2
-Estimated frequency of item_2: 16
-Estimated frequency of item_244: 3
-Estimated frequency of item_2: 16
-Estimated frequency of item_2: 16
-Estimated frequency of item_5: 6
-Estimated frequency of item_2: 16
-Estimated frequency of item_16941: 2
-Estimated frequency of item_2: 16
-Estimated frequency of item_23982: 2
+# Frequency Estimates (MPI with 4 processes)
+# Item, Estimated Frequency
+item_2214, 3
+item_2, 1728
+item_327, 3
+item_1688, 2
+item_6, 248
+item_60, 19
+item_16, 60
+item_763, 1
+item_66, 10
+item_9, 154
+item_8, 175
+item_3, 796
+item_66, 10
+item_41, 22
+item_3, 796
+item_2, 1728
+item_2, 1728
+item_2, 1728
+item_2, 1728
+item_2, 1728
+item_41769, 2
+item_6, 248
+item_4, 486
+item_18, 61
+item_3, 796
+item_39, 25
+item_226, 4
+item_393, 2
+item_47, 17
+item_6, 248
+item_161, 7
+item_4, 486
+item_2, 1728
+item_66, 10
+item_131, 7
+item_2, 1728
+item_137, 10
+item_252, 3
+item_73, 12
+item_137, 10
+item_15545, 2
+item_33, 43
+item_11904, 1
+item_2, 1728
+item_12, 111
+item_16, 60
+item_60, 19
+item_2, 1728
+item_3150, 1
+item_14707, 1
+item_5995, 2
+item_4, 486
+item_91, 11
+item_67, 8
+item_233, 3
+item_3724, 2
+item_53, 16
+item_4659, 1
+item_15, 73
+item_35, 22
+item_15, 73
+item_55, 16
+item_2, 1728
+item_46, 21
+item_4, 486
+item_2, 1728
+item_6, 248
+item_32, 32
+item_2, 1728
+item_10493, 1
+item_874, 4
+item_25871, 3
+item_29, 37
+item_36889, 1
+item_10, 122
+item_295, 3
+item_7, 214
+item_39557, 1
+item_20, 46
+item_2, 1728
+item_5, 348
+item_525, 2
+item_4, 486
+item_3, 796
+item_38, 28
+item_4294, 2
+item_2, 1728
+item_3018, 1
+item_59, 8
+item_12, 111
+item_8, 175
+item_390, 4
+item_11727, 1
+item_17, 74
+item_3, 796
+item_2, 1728
+item_3204, 1
+item_6, 248
+item_3, 796
+item_20017, 2

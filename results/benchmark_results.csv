@@ -1,0 +1,2 @@
+processes,items,time_read,time_bcast,time_scatter,time_compute,time_reduce,time_estimate,time_total
+4,10000,0.008660,0.000037,0.002449,0.002068,0.000752,0.008309,0.022713
