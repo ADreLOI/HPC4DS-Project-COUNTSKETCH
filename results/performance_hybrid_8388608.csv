@@ -1,0 +1,2 @@
+Processes,N_Threads,Serial_Time,Compute_Time,Total_Time,Speedup_Compute,Efficiency_Compute,Speedup_Comm,Efficiency_Comm
+2,2,1.821552,1.464487,1.616851,1.243816,62.190784,1.126605,56.330238
