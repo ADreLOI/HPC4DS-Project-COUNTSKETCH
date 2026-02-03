@@ -19,12 +19,15 @@ fi
 
 # Determine the total number of lines for the CSV filename
 TOTAL_LINES=$(wc -l < "$INPUT_FILE" | xargs)
-CSV_FILE="${RESULTS_DIR}/weak_scaling_hybrid_${CURRENT_LINES}.csv"
+CSV_FILE="${RESULTS_DIR}/weak_scaling_hybrid_${TOTAL_LINES}.csv"
+
+echo "Processes,N_Threads,Total_Lines,Serial_Time,Compute_Time,Compute_Communication_Time,Weak_Scaling_Compute,Weak_Scaling_Communication" > "$CSV_FILE"
+
 
 # --- TEST WEAK SCALING ---
 echo -e "\nStarting Weak Scaling Tests..."
-echo "| Processes | N_Threads | Total Lines | Weak Efficiency |"
-echo "|-----------|-----------|-------------|-----------------|"
+echo "| Processes | N_Threads | Total Lines | Serial Time | Compute Time | Compute + Communication Time | Weak Scaling Compute | Weak Scaling Communication |"
+echo "|-----------|-----------|-------------|-------------|--------------|------------------------------|----------------------|----------------------------|"
 
 # In Weak Scaling, keep threads fixed (e.g., 8 as in your code)
 for np in 2 4 8 16 32 64
@@ -33,3 +36,6 @@ do
     mpirun -np $np $EXE $TRIALS $BUCKETS $INPUT_FILE 8 1 | \
         grep "|" | grep -v "Processes" | grep -v -- "---"
 done
+
+echo "CSV results saved to: $CSV_FILE"
+echo "Weak scaling study completed successfully."

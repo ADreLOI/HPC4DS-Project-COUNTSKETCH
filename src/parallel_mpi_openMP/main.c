@@ -106,10 +106,6 @@ int main(int argc, char** argv)
     int total_lines = 0;
     int chunk_size = 0;
 
-    if(scaling_mode == 1)
-    {
-        n_threads = 8; //Fixed size for evaluating weak scaling
-    }
 
     if(my_rank == 0) 
     {
@@ -236,7 +232,7 @@ int main(int argc, char** argv)
             float weakScalingCompute = avgSerialTime / (avgCommTime);
             float weakScalingComm = avgSerialTime / avgParallelTime;
             printf("| %9d | %9d | %11d | %11.6f | %12.6f | %28.6f | %20.6f | %26.6f |\n",
-                size, n_threads, total_lines, avgSerialTime, avgCommTime, avgParallelTime,
+                size, n_threads, chunk_size, avgSerialTime, avgCommTime, avgParallelTime,
                 weakScalingCompute, weakScalingComm);
 
             //Save in CSV file
