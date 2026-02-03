@@ -45,7 +45,7 @@ do
         
         # FIX: Added -- to grep to prevent it from interpreting --- as an option
         # We also filter out "Total lines" and "Starting Serial" to keep the table clean
-        mpirun -np $np $EXE $TRIALS $BUCKETS $INPUT_FILE $nt | \
+        mpirun -np $np $EXE $TRIALS $BUCKETS $INPUT_FILE $nt 0 | \
             grep "|" | \
             grep -v "Processes" | \
             grep -v -- "---" | \

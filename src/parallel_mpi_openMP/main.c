@@ -183,10 +183,15 @@ int main(int argc, char** argv)
     if(my_rank==0)
     {
         printf("Starting Serial Computation for %d iterations...\n", ITERATIONS);
+        if(scaling_mode == 1)
+        {
+            total_lines = chunk_size;
+        }
         for(int iter = 0; iter < ITERATIONS; iter++)
         {
             ComputeSerialCountSketch(depth, width, cs_create(depth, width), global_data, total_lines);
         }
+        
     }
 
     MPI_Barrier(MPI_COMM_WORLD); //Synchronize before starting parallel computation
@@ -209,6 +214,10 @@ int main(int argc, char** argv)
     if(my_rank == 0)
     {
         //Estimate frequencies of some items (for demonstration)
+        if(scaling_mode == 1)
+        {
+            total_lines = chunk_size*size;
+        }
         for(int i = 0; i < total_lines; i++) 
         {
             int32_t estimate = cs_estimate(final_sketch, &global_data[i * MAX_ITEM_LENGTH]);
@@ -232,12 +241,12 @@ int main(int argc, char** argv)
             float weakScalingCompute = avgSerialTime / (avgCommTime);
             float weakScalingComm = avgSerialTime / avgParallelTime;
             printf("| %9d | %9d | %11d | %11.6f | %12.6f | %28.6f | %20.6f | %26.6f |\n",
-                size, n_threads, chunk_size, avgSerialTime, avgCommTime, avgParallelTime,
+                size, n_threads, chunk_size*size, avgSerialTime, avgCommTime, avgParallelTime,
                 weakScalingCompute, weakScalingComm);
 
             //Save in CSV file
             char csv_path[256];
-            snprintf(csv_path, sizeof(csv_path), "results/weak_scaling_hybrid_%d.csv", total_lines);
+            snprintf(csv_path, sizeof(csv_path), "results/weak_scaling_hybrid_8388608.csv");
             FILE *csv_file = fopen(csv_path, "a");
             if (csv_file == NULL)
             {
@@ -246,7 +255,7 @@ int main(int argc, char** argv)
                 return EXIT_FAILURE;
             }
             fprintf(csv_file, "%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n",
-                    size, n_threads, total_lines, avgSerialTime, avgCommTime, avgParallelTime,
+                    size, n_threads, chunk_size*size, avgSerialTime, avgCommTime, avgParallelTime,
                     weakScalingCompute, weakScalingComm);
             fclose(csv_file);
         }
