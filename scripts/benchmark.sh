@@ -39,7 +39,7 @@ echo "Processes,N_Threads,Serial_Time,Compute_Time,Total_Time,Speedup_Compute,Ef
 # --- SCALABILITY LOOP ---
 for np in 2 4 8 16 32 64
 do
-    for nt in 2 4 8 16 32 64
+    for nt in 1 2 4 8 16 32 64
     do
         export OMP_NUM_THREADS=$nt
         

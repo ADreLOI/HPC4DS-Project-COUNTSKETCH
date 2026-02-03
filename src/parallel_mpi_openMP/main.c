@@ -33,7 +33,7 @@ void ComputeCountSketchHybrid(int depth, int width, CountSketch *local_cs, Count
 
 
     //Update local sketch in parallel using OpenMP
-    omp_set_num_threads(omp_get_max_threads()); //Set number of threads, can be adjusted
+    omp_set_num_threads(n_threads); //Set number of threads, can be adjusted
 
     wt_comm1 = MPI_Wtime();
     #pragma omp parallel for schedule(dynamic)
@@ -86,10 +86,12 @@ int main(int argc, char** argv)
     int my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
-    if(argc < 5) 
+    if(argc < 6) 
     {
-        if(my_rank == 0) {
-            printf("Usage: mpirun -np <num_processes> %s <num_trials> <num_buckets> <input_file_path> <num_threads>\n", argv[0]);
+        if(my_rank == 0) 
+        {
+            //Scaling mode refers to 0 Strong (SpeedUp and Efficiency computed w.r.t. serial time) and 1 Weak (SpeedUp and Efficiency computed w.r.t. parallel time)
+            printf("Usage: mpirun -np <num_processes> %s <num_trials> <num_buckets> <input_file_path> <num_threads> <scaling_mode>\n", argv[0]);
         }
         MPI_Finalize();
         return 1;
@@ -99,9 +101,15 @@ int main(int argc, char** argv)
     int width = atoi(argv[2]);
     char* input_file = argv[3];
     int n_threads = atoi(argv[4]);
+    int scaling_mode = atoi(argv[5]); // 0 for Strong, 1 for Weak
     char* global_data = NULL;
     int total_lines = 0;
     int chunk_size = 0;
+
+    if(scaling_mode == 1)
+    {
+        n_threads = 8; //Fixed size for evaluating weak scaling
+    }
 
     if(my_rank == 0) 
     {
@@ -123,10 +131,29 @@ int main(int argc, char** argv)
         fclose(file);
         printf("Total lines in input file: %d\n", total_lines); 
 
-        chunk_size = total_lines / size;
-
+        if(scaling_mode == 1) //Weak Scaling
+        {
+            printf("Weak Scaling Mode Activated.\n");
+            if(total_lines != 8388608) //8 Million lines per process
+            {
+                printf("For Weak Scaling, the input file must contain %d lines.\n", 8388608);
+                MPI_Finalize();
+                return EXIT_FAILURE;
+            }
+            else
+            {
+                //Adjusting total lines in order to have 8 million only at 64 processes
+                chunk_size = 131072; //8 Million / 64 processes
+                total_lines = chunk_size * size;
+            }
+        }
+        else //Strong Scaling
+        {
+            chunk_size = total_lines / size;
+        }
+              
         //Allocates the buffer before scatter
-        global_data = (char*)malloc(total_lines* MAX_ITEM_LENGTH * sizeof(char));
+        global_data = (char*)malloc(total_lines * MAX_ITEM_LENGTH * sizeof(char));
 
         //Read the file again to fill the buffer
         file = fopen(input_file, "r");
@@ -138,7 +165,7 @@ int main(int argc, char** argv)
             return EXIT_FAILURE;
         }
         int index = 0;
-        while (fgets(item, sizeof(item), file))
+        while (index < total_lines && fgets(item, sizeof(item), file))        
         {
             // Remove newline character if present
             item[strcspn(item, "\n")] = 0;
@@ -172,8 +199,10 @@ int main(int argc, char** argv)
     {
          //Each process creates its own Count Sketch
         CountSketch *local_cs = cs_create(depth, width);
-        free(final_sketch);
-        final_sketch = NULL;
+        if(final_sketch != NULL)
+        {
+            cs_destroy(final_sketch);
+        }
         //Compute the Count Sketch iterating in order to attenuate outliers
         ComputeCountSketchHybrid(depth, width, local_cs, &final_sketch, my_rank, size, chunk_size, global_data, n_threads, local_data);
         //Deallocate each time the local sketch
@@ -195,35 +224,68 @@ int main(int argc, char** argv)
         cs_destroy(final_sketch);
         free(global_data);
 
-        //Prints    
-        printf("| Processes | N_Threads | Serial Time | Compute Time | Compute + Communication Time | Speedup Compute | Efficiency Compute | Speedup Communication | Efficiency Communication |\n");
-        printf("|-----------|-----------|-------------|--------------|------------------------------|-----------------|--------------------|-----------------------|--------------------------|\n");
-        float avgSerialTime = totSerialTime / ITERATIONS;
-        float avgParallelTime = totParallelTime / ITERATIONS;
-        float avgCommTime = totCommParallelTime / ITERATIONS;
-
-        float speedupCompute = avgSerialTime / (avgCommTime);
-        float efficiencyCompute = (speedupCompute / size) * 100;
-        float speedupComm = avgSerialTime / avgParallelTime;
-        float efficiencyComm = (speedupComm / size) * 100;
-        printf("| %9d | %9d | %11.6f | %12.6f | %28.6f | %15.6f | %17.2f%% | %21.6f | %23.2f%% |\n",
-               size, n_threads, avgSerialTime, avgCommTime, avgParallelTime,
-               speedupCompute, efficiencyCompute, speedupComm, efficiencyComm);
-
-        //Save in CSV file
-        char csv_path[256];
-        snprintf(csv_path, sizeof(csv_path), "results/performance_hybrid_%d.csv", total_lines);
-        FILE *csv_file = fopen(csv_path, "a");
-        if (csv_file == NULL)
+        if(scaling_mode == 1)
         {
-            perror("Unable to open CSV file!");
-            MPI_Finalize();
-            return EXIT_FAILURE;
+            //For each number of processes print average serial time, average parallel time, average communication time, weak scaling measured
+            printf("| Processes | N_Threads | Total Lines | Serial Time | Compute Time | Compute + Communication Time | Weak Scaling Compute | Weak Scaling Communication |\n");
+            printf("|-----------|-----------|-------------|-------------|--------------|------------------------------|----------------------|----------------------------|\n");
+            float avgSerialTime = totSerialTime / ITERATIONS;
+            float avgParallelTime = totParallelTime / ITERATIONS;
+            float avgCommTime = totCommParallelTime / ITERATIONS;
+
+            float weakScalingCompute = avgSerialTime / (avgCommTime);
+            float weakScalingComm = avgSerialTime / avgParallelTime;
+            printf("| %9d | %9d | %11d | %11.6f | %12.6f | %28.6f | %20.6f | %26.6f |\n",
+                size, n_threads, total_lines, avgSerialTime, avgCommTime, avgParallelTime,
+                weakScalingCompute, weakScalingComm);
+
+            //Save in CSV file
+            char csv_path[256];
+            snprintf(csv_path, sizeof(csv_path), "results/weak_scaling_hybrid_%d.csv", total_lines);
+            FILE *csv_file = fopen(csv_path, "a");
+            if (csv_file == NULL)
+            {
+                perror("Unable to open CSV file!");
+                MPI_Finalize();
+                return EXIT_FAILURE;
+            }
+            fprintf(csv_file, "%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                    size, n_threads, total_lines, avgSerialTime, avgCommTime, avgParallelTime,
+                    weakScalingCompute, weakScalingComm);
+            fclose(csv_file);
         }
-        fprintf(csv_file, "%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+        else
+        {
+            //Prints    
+            printf("| Processes | N_Threads | Serial Time | Compute Time | Compute + Communication Time | Speedup Compute | Efficiency Compute | Speedup Communication | Efficiency Communication |\n");
+            printf("|-----------|-----------|-------------|--------------|------------------------------|-----------------|--------------------|-----------------------|--------------------------|\n");
+            float avgSerialTime = totSerialTime / ITERATIONS;
+            float avgParallelTime = totParallelTime / ITERATIONS;
+            float avgCommTime = totCommParallelTime / ITERATIONS;
+
+            float speedupCompute = avgSerialTime / (avgCommTime);
+            float efficiencyCompute = (speedupCompute / size) * 100;
+            float speedupComm = avgSerialTime / avgParallelTime;
+            float efficiencyComm = (speedupComm / size) * 100;
+            printf("| %9d | %9d | %11.6f | %12.6f | %28.6f | %15.6f | %17.2f%% | %21.6f | %23.2f%% |\n",
                 size, n_threads, avgSerialTime, avgCommTime, avgParallelTime,
                 speedupCompute, efficiencyCompute, speedupComm, efficiencyComm);
-        fclose(csv_file);
+
+            //Save in CSV file
+            char csv_path[256];
+            snprintf(csv_path, sizeof(csv_path), "results/performance_hybrid_%d.csv", total_lines);
+            FILE *csv_file = fopen(csv_path, "a");
+            if (csv_file == NULL)
+            {
+                perror("Unable to open CSV file!");
+                MPI_Finalize();
+                return EXIT_FAILURE;
+            }
+            fprintf(csv_file, "%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                    size, n_threads, avgSerialTime, avgCommTime, avgParallelTime,
+                    speedupCompute, efficiencyCompute, speedupComm, efficiencyComm);
+            fclose(csv_file);
+        }
     }
 
     free(local_data);
