@@ -61,3 +61,10 @@ build/
 key.txt
 
 datasets/input_data_8388608.txt
+
+strong_scaling_speedup_compute.png
+weak_scaling_efficiency_compute.png
+strong_scaling_speedup.png
+weak_scaling_efficiency.png
+weak_scaling_times.png
+strong_scaling_time.png
