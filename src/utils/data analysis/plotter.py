@@ -40,16 +40,16 @@ def generate_strong_scaling_plots(csv_file, total_lines):
     plt.figure(figsize=(10, 6))
     for proc in sorted(df['Processes'].unique()):
         subset = df[df['Processes'] == proc]
-        plt.plot(subset['N_Threads'], subset['Speedup_Comm'], marker='o', label=f'Processes={proc}')
+        plt.plot(subset['N_Threads'], subset['Speedup_Compute'], marker='o', label=f'Processes={proc}')
     
-    plt.title('Strong Scaling: Total Speedup (Compute + Communication)', fontsize=14)
+    plt.title('Strong Scaling: Total Speedup (Compute)', fontsize=14)
     plt.xlabel('Number of Threads', fontsize=12)
     plt.ylabel('Speedup Factor', fontsize=12)
     plt.xscale('log', base=2)
     plt.xticks(df['N_Threads'].unique(), df['N_Threads'].unique())
     plt.legend(title='MPI Ranks')
     plt.grid(True, which="both", ls="-", alpha=0.5)
-    plt.savefig(f'strong_scaling_speedup_{total_lines}.png', dpi=300)
+    plt.savefig(f'charts/strong_scaling_speedup_{total_lines}.png', dpi=300)
     print(f"Saved: strong_scaling_speedup_{total_lines}.png")
     plt.close()
 
@@ -74,13 +74,13 @@ def generate_weak_scaling_plots(csv_file, total_lines):
     plt.xticks(df['Processes'], df['Processes'])
     plt.legend()
     plt.grid(True, which="both", ls="-", alpha=0.5)
-    plt.savefig(f'weak_scaling_times_{total_lines}.png', dpi=300)
+    plt.savefig(f'charts/weak_scaling_times_{total_lines}.png', dpi=300)
     print(f"Saved: weak_scaling_times_{total_lines}.png")
     plt.close()
 
     # 4. Weak Scaling Efficiency Plot
     plt.figure(figsize=(10, 6))
-    plt.plot(df['Processes'], df['Weak_Scaling_Compute'], marker='o', color='green', label='Measured Weak Efficiency')
+    plt.plot(df['Processes'], df['Weak_Scaling_Communication'], marker='o', color='green', label='Measured Weak Efficiency')
     plt.axhline(y=1.0, color='red', linestyle='--', label='Ideal Scaling (1.0)')
     
     plt.title('Weak Scaling: Efficiency vs. Processes', fontsize=14)
@@ -91,8 +91,8 @@ def generate_weak_scaling_plots(csv_file, total_lines):
     plt.ylim(0, 1.8)
     plt.legend()
     plt.grid(True, which="both", ls="-", alpha=0.5)
-    plt.savefig(f'weak_scaling_efficiency_compute_{total_lines}.png', dpi=300)
-    print(f"Saved: weak_scaling_efficiency_compute_{total_lines}.png")
+    plt.savefig(f'charts/weak_scaling_efficiency_{total_lines}.png', dpi=300)
+    print(f"Saved: weak_scaling_efficiency_{total_lines}.png")
     plt.close()
 
 def plot_strong_scaling_comparison(csv_files):
@@ -141,7 +141,7 @@ def plot_strong_scaling_comparison(csv_files):
     plt.legend()
     plt.grid(True, which="both", ls="-", alpha=0.3)
 
-    plt.savefig("strong_comparison_compute.png", dpi=300)
+    plt.savefig("charts/strong_comparison_compute.png", dpi=300)
     plt.close()
    
 
@@ -170,7 +170,7 @@ def plot_weak_scaling_comparison(csv_files, output_name='weak_comparison.png'):
     plt.ylim(0, 1.8) # Adjust if you have super-linear speedup
     plt.legend()
     plt.grid(True, which="both", ls="-", alpha=0.3)
-    plt.savefig(output_name, dpi=300)
+    plt.savefig(f"charts/{output_name}", dpi=300)
     plt.close()
 
 # --- Example Usage
