@@ -12,7 +12,7 @@ cd "$(dirname "$0")/.." || exit
 EXE="./build/app_hybrid"
 TRIALS=5
 BUCKETS=1000
-INPUT_FILE="datasets/input_data_8388608.txt"
+INPUT_FILE="datasets/input_data_524288.txt"
 RESULTS_DIR="results"
 
 # Ensure directories exist

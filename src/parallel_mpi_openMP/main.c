@@ -129,19 +129,10 @@ int main(int argc, char** argv)
 
         if(scaling_mode == 1) //Weak Scaling
         {
-            printf("Weak Scaling Mode Activated.\n");
-            if(total_lines != 8388608) //8 Million lines per process
-            {
-                printf("For Weak Scaling, the input file must contain %d lines.\n", 8388608);
-                MPI_Finalize();
-                return EXIT_FAILURE;
-            }
-            else
-            {
-                //Adjusting total lines in order to have 8 million only at 64 processes
-                chunk_size = 131072; //8 Million / 64 processes
-                total_lines = chunk_size * size;
-            }
+             //Adjusting total lines in order to have 8 million only at 64 processes
+             chunk_size = total_lines/64; //8 Million / 64 processes
+             total_lines = chunk_size * size;
+          
         }
         else //Strong Scaling
         {

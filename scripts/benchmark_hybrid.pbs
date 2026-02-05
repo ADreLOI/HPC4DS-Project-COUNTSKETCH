@@ -1,9 +1,9 @@
 # !/ bin / bash
 # Job name
-#PBS -N matTransposeMPI
+#PBS -N CountSketch
 # Output files
-#PBS -o ./matTransposeMPI.o
-#PBS -e ./matTransposeMPI.e
+#PBS -o ./countSketchHybrid.o
+#PBS -e ./countSketchHybrid.e
 # Queue name
 #PBS -q short_cpuQ
 # Set the maximum wall time

@@ -1,8 +1,15 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import re
 
-def generate_strong_scaling_plots(csv_file):
+def extract_total_lines_from_filename(csv_file):
+    """Extracts the trailing integer from filenames like performance_hybrid_8388608.csv."""
+    base = os.path.basename(csv_file)
+    match = re.search(r"_(\d+)\.csv$", base)
+    return int(match.group(1)) if match else None
+
+def generate_strong_scaling_plots(csv_file, total_lines):
     """Generates plots for Strong Scaling (Performance)."""
     if not os.path.exists(csv_file):
         print(f"Warning: {csv_file} not found.")
@@ -10,7 +17,7 @@ def generate_strong_scaling_plots(csv_file):
 
     df = pd.read_csv(csv_file)
     df = df.sort_values(['Processes', 'N_Threads'])
-
+    
     # 1. Total Execution Time Plot
     plt.figure(figsize=(10, 6))
     for proc in sorted(df['Processes'].unique()):
@@ -25,8 +32,8 @@ def generate_strong_scaling_plots(csv_file):
     plt.xticks(df['N_Threads'].unique(), df['N_Threads'].unique())
     plt.legend(title='MPI Ranks')
     plt.grid(True, which="both", ls="-", alpha=0.5)
-    plt.savefig('strong_scaling_time.png', dpi=300)
-    print("Saved: strong_scaling_time.png")
+    plt.savefig(f'strong_scaling_time_{total_lines}.png', dpi=300)
+    print(f"Saved: strong_scaling_time_{total_lines}.png")
     plt.close()
 
     # 2. Total Speedup Plot
@@ -42,11 +49,11 @@ def generate_strong_scaling_plots(csv_file):
     plt.xticks(df['N_Threads'].unique(), df['N_Threads'].unique())
     plt.legend(title='MPI Ranks')
     plt.grid(True, which="both", ls="-", alpha=0.5)
-    plt.savefig('strong_scaling_speedup_compute.png', dpi=300)
-    print("Saved: strong_scaling_speedup_compute.png")
+    plt.savefig(f'strong_scaling_speedup_compute_{total_lines}.png', dpi=300)
+    print(f"Saved: strong_scaling_speedup_compute_{total_lines}.png")
     plt.close()
 
-def generate_weak_scaling_plots(csv_file):
+def generate_weak_scaling_plots(csv_file, total_lines):
     """Generates plots for Weak Scaling."""
     if not os.path.exists(csv_file):
         print(f"Warning: {csv_file} not found.")
@@ -67,8 +74,8 @@ def generate_weak_scaling_plots(csv_file):
     plt.xticks(df['Processes'], df['Processes'])
     plt.legend()
     plt.grid(True, which="both", ls="-", alpha=0.5)
-    plt.savefig('weak_scaling_times.png', dpi=300)
-    print("Saved: weak_scaling_times.png")
+    plt.savefig(f'weak_scaling_times_{total_lines}.png', dpi=300)
+    print(f"Saved: weak_scaling_times_{total_lines}.png")
     plt.close()
 
     # 4. Weak Scaling Efficiency Plot
@@ -84,8 +91,8 @@ def generate_weak_scaling_plots(csv_file):
     plt.ylim(0, 1.6)
     plt.legend()
     plt.grid(True, which="both", ls="-", alpha=0.5)
-    plt.savefig('weak_scaling_efficiency_compute.png', dpi=300)
-    print("Saved: weak_scaling_efficiency_compute.png")
+    plt.savefig(f'weak_scaling_efficiency_compute_{total_lines}.png', dpi=300)
+    print(f"Saved: weak_scaling_efficiency_compute_{total_lines}.png")
     plt.close()
 
 if __name__ == "__main__":
@@ -93,7 +100,11 @@ if __name__ == "__main__":
     performance_data = 'results/performance_hybrid_8388608.csv'
     weak_scaling_data = 'results/weak_scaling_hybrid_8388608.csv'
 
+    total_lines = extract_total_lines_from_filename(performance_data)
+    if total_lines is not None:
+        print(f"Detected total lines: {total_lines}")
+
     print("--- Generating Scaling Plots ---")
-    generate_strong_scaling_plots(performance_data)
-    generate_weak_scaling_plots(weak_scaling_data)
+    generate_strong_scaling_plots(performance_data, total_lines)
+    generate_weak_scaling_plots(weak_scaling_data, total_lines)
     print("--- Done ---")

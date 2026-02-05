@@ -32,7 +32,7 @@ def generate_zipf_data(filename, num_elements, num_unique_words, zipf_exponent):
     print(f"File '{filename}' generated successfully.")
 
 # Parameters
-TOTAL_ITEMS = 8388608      # 1 million strings
+TOTAL_ITEMS = 524288      # 1 million strings
 VOCAB_SIZE = 50000        # 50 thousand possible unique words
 SKEW = 1.2                # Typical value for natural language
 
