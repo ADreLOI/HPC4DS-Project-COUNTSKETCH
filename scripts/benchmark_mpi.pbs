@@ -30,7 +30,13 @@ cd $PBS_O_WORKDIR
 # Move to project root
 cd ..
 
-# Run benchmarks
+# Run benchmarks for main size (8M)
+echo "=== Running 8M Strong Scaling ==="
 bash scripts/benchmark_performance_mpi.sh
 
+echo "=== Running 8M Weak Scaling ==="
 bash scripts/weak_scaling_mpi.sh
+
+# Run benchmarks for comparison sizes (500K, 1M)
+echo "=== Running Multi-Size Comparison (500K, 1M, 8M) ==="
+bash scripts/benchmark_all_sizes_mpi.sh
