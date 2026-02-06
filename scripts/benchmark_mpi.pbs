@@ -35,5 +35,9 @@ echo "=== Running 8M Weak Scaling ==="
 bash scripts/weak_scaling_mpi.sh
 
 # Run benchmarks for comparison sizes (500K, 1M)
-echo "=== Running Multi-Size Comparison (500K, 1M, 8M) ==="
+echo "=== Running Multi-Size Strong Scaling (500K, 1M, 8M) ==="
 bash scripts/benchmark_all_sizes_mpi.sh
+
+# Run weak scaling for all sizes
+echo "=== Running Multi-Size Weak Scaling (500K, 1M, 8M) ==="
+bash scripts/weak_scaling_multisize_mpi.sh

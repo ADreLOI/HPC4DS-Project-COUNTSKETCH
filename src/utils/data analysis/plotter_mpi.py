@@ -113,6 +113,14 @@ def generate_strong_scaling_plots(csv_file):
 def generate_weak_scaling_plots(csv_file):
     """
     Generate Weak Scaling charts for MPI.
+    
+    Weak Scaling Efficiency = T1(n) / Tp(n)
+    Where:
+    - T1(n) = Time for 1 process with chunk size n
+    - Tp(n) = Time for P processes, each with chunk size n
+    
+    Since Serial_Time in CSV is for FULL problem (chunk_size * P items),
+    we need to divide by P to get the base chunk time.
     """
     if not os.path.exists(csv_file):
         print(f"Warning: {csv_file} not found.")
@@ -124,9 +132,16 @@ def generate_weak_scaling_plots(csv_file):
     
     print(f"Generating weak scaling plots for {total_lines} base items...")
     
+    # CORRECT Weak Scaling Efficiency calculation:
+    # T1_base = Serial_Time / P (time for 1 process to handle base chunk)
+    # Efficiency = T1_base / Parallel_Time
+    df['T1_base'] = df['Serial_Time'] / df['Processes']
+    df['Efficiency_Compute_Correct'] = df['T1_base'] / df['Compute_Time']
+    df['Efficiency_Comm_Correct'] = df['T1_base'] / df['Compute_Communication_Time']
+    
     # 4. Weak Scaling Efficiency (Compute Only)
     plt.figure(figsize=(10, 6))
-    plt.plot(df['Processes'], df['Weak_Scaling_Compute'], 
+    plt.plot(df['Processes'], df['Efficiency_Compute_Correct'], 
              marker='o', linewidth=2, markersize=8, color='blue', label='Weak Efficiency (Compute)')
     plt.axhline(y=1.0, color='red', linestyle='--', linewidth=1.5, label='Ideal Scaling (1.0)')
     
@@ -135,7 +150,7 @@ def generate_weak_scaling_plots(csv_file):
     plt.ylabel('Efficiency (T1 / Tp)', fontsize=12)
     plt.xscale('log', base=2)
     plt.xticks(df['Processes'], df['Processes'])
-    plt.ylim(0, max(1.5, df['Weak_Scaling_Compute'].max() * 1.1))
+    plt.ylim(0, 1.4)
     plt.legend()
     plt.grid(True, which="both", ls="-", alpha=0.5)
     plt.tight_layout()
@@ -145,7 +160,7 @@ def generate_weak_scaling_plots(csv_file):
     
     # 5. Weak Scaling Efficiency (With Communication)
     plt.figure(figsize=(10, 6))
-    plt.plot(df['Processes'], df['Weak_Scaling_Communication'], 
+    plt.plot(df['Processes'], df['Efficiency_Comm_Correct'], 
              marker='o', linewidth=2, markersize=8, color='green', label='Measured Weak Efficiency')
     plt.axhline(y=1.0, color='red', linestyle='--', linewidth=1.5, label='Ideal Scaling (1.0)')
     
@@ -154,7 +169,7 @@ def generate_weak_scaling_plots(csv_file):
     plt.ylabel('Efficiency Value (T1 / Tp)', fontsize=12)
     plt.xscale('log', base=2)
     plt.xticks(df['Processes'], df['Processes'])
-    plt.ylim(0, max(1.5, df['Weak_Scaling_Communication'].max() * 1.1))
+    plt.ylim(0, 1.4)
     plt.legend()
     plt.grid(True, which="both", ls="-", alpha=0.5)
     plt.tight_layout()
