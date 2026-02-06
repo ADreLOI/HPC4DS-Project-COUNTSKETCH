@@ -88,19 +88,24 @@ char* read_all_items(const char *filename, int *count)
     return items;
 }
 
-/**
- * Compute Count Sketch serially (for baseline timing)
- */
-void ComputeSerialCountSketch(int depth, int width, CountSketch *cs, char* data, int total_lines)
-{
-    for(int i = 0; i < total_lines; i++) 
-    {
-        cs_update(cs, &data[i * MAX_ITEM_LENGTH]);
-    }
-}
-
-/**
- * Compute distribution for MPI_Scatterv
+// FUNCTION: calculate_distribution
+/* 
+   Calculates how to distribute N items among P processes using MPI_Scatterv.
+   
+   HANDLES NON-EVEN DIVISION:
+   --------------------------
+   If N=100 and P=3:
+   - Base count = 100/3 = 33
+   - Remainder = 100%3 = 1
+   - Rank 0: 34 items (gets the extra 1)
+   - Rank 1: 33 items
+   - Rank 2: 33 items
+ 
+   Parameters:
+   n_items     : Total number of items
+   size        : Number of MPI processes
+   sendcounts  : OUTPUT array[size] - items per process
+   displs      : OUTPUT array[size] - starting offset for each process
  */
 void calculate_distribution(int n_items, int size, int *sendcounts, int *displs)
 {
@@ -146,6 +151,7 @@ int main(int argc, char** argv)
     
     char* global_data = NULL;
     int total_lines = 0;
+    int original_total_lines = 0;  // Keep track of original file size for CSV naming
     int chunk_size = 0;
     
     // Generate seeds (same across all ranks)
@@ -174,6 +180,7 @@ int main(int argc, char** argv)
         }
         fclose(file);
         printf("Total lines in input file: %d\n", total_lines);
+        original_total_lines = total_lines;  // Save before scaling
         
         // Weak scaling: adjust total lines
         if(scaling_mode == 1) {
@@ -205,6 +212,7 @@ int main(int argc, char** argv)
     // Broadcast metadata
     MPI_Bcast(&total_lines, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&chunk_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&original_total_lines, 1, MPI_INT, 0, MPI_COMM_WORLD);
     
     // Calculate distribution
     int *sendcounts = (int*)malloc(size * sizeof(int));
@@ -327,9 +335,9 @@ int main(int argc, char** argv)
                    size, n_threads, chunk_size * size, avgSerialTime, avgCommTime, avgParallelTime,
                    weakScalingCompute, weakScalingComm);
             
-            // Save to CSV - use total_lines for dynamic filename
+            // Save to CSV - use ORIGINAL input file size for filename
             char csv_path[256];
-            snprintf(csv_path, sizeof(csv_path), "results/weak_scaling_mpi_%d.csv", total_lines);
+            snprintf(csv_path, sizeof(csv_path), "results/weak_scaling_mpi_%d.csv", original_total_lines);
             FILE *csv_file = fopen(csv_path, "a");
             if(csv_file) {
                 fprintf(csv_file, "%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n",

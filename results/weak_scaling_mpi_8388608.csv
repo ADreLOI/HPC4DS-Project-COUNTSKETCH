@@ -1,2 +1,0 @@
-Processes,N_Threads,Total_Lines,Serial_Time,Compute_Time,Compute_Communication_Time,Weak_Scaling_Compute,Weak_Scaling_Communication
-64,1,8388608,2.119276,0.032265,0.235609,65.683670,8.994874
