@@ -1,41 +1,27 @@
 /**
- * COUNT SKETCH - MPI 
+ * COUNT SKETCH - MPI IMPLEMENTATION
  * 
- * This is the main entry point for the MPI-parallelized Count Sketch.
+ * USAGE:
+ *   mpirun -np <P> ./app_mpi <trials> <buckets> <input_file> <scaling_mode>
  * 
- * mpirun -np <P> ./app_mpi <input_file> [--benchmark] [--output <file>]
+ * ARGUMENTS:
+ *   trials       - Number of iterations for averaging results
+ *   buckets      - Width of Count Sketch (number of buckets per row)
+ *   input_file   - Path to input data file (one item per line)
+ *   scaling_mode - 0 = Strong Scaling, 1 = Weak Scaling
  * 
- * Arguments:
- *   <input_file>   : Path to input data file (one item per line)
- *   --benchmark    : Enable timing output
- *   --output <file>: Write frequency estimates to file
+ * OUTPUT:
+ *   Prints table with timing and speedup/efficiency metrics
+ *   Saves results to CSV for plotting
  * 
  * PARALLELIZATION STRATEGY (Scatter + Reduce):
- * 
- * 1. INITIALIZATION
- *    - Rank 0 reads all items from file
- *    - Rank 0 generates hash seeds
- * 
- * 2. BROADCAST SEEDS (MPI_Bcast)
- *    - All ranks need IDENTICAL hash functions
- *    - Rank 0 broadcasts seeds to all ranks
- * 
- * 3. SCATTER DATA (MPI_Scatterv)  
- *    - Rank 0 distributes N/P items to each rank
- *    - Uses Scatterv to handle non-even division
- *    - Each rank gets its chunk of data
- * 
- * 4. LOCAL COMPUTATION
- *    - Each rank builds a local Count Sketch
- *    - Processes only its assigned items
- * 
- * 5. REDUCE TABLES (MPI_Reduce with MPI_SUM)
- *    - All partial tables are summed at rank 0
- *    - Result is the complete Count Sketch!
- * 
- * 6. ESTIMATION (Rank 0 only)
- *    - Rank 0 uses merged table to estimate frequencies
- *  */
+ *   1. Rank 0 reads all items from file
+ *   2. Rank 0 broadcasts hash seeds to all ranks
+ *   3. Data is scattered to all ranks via MPI_Scatterv
+ *   4. Each rank builds a local Count Sketch
+ *   5. Partial tables are reduced (summed) at rank 0 via MPI_Reduce
+ *   6. Rank 0 estimates frequencies
+ */
 
 #include <mpi.h>
 #include <stdio.h>
@@ -45,59 +31,19 @@
 #include "../include/count_sketch.h"
 #include "../include/count_sketch_mpi.h"
 
-// CONFIGURATION CONSTANTS
+// Configuration
+#define MAX_ITEM_LENGTH 64
+#define DEPTH 5              // Number of hash functions (same as Hybrid)
+#define ITERATIONS 10        // Internal iterations for timing stability
 
-/* Count Sketch parameters 
-   TUNING GUIDE:
-   - DEPTH (d): More rows = better accuracy, but more memory. 7-11 is typical.
-   - WIDTH (w): More buckets = fewer collisions. Rule of thumb: w ≈ e/ε² 
-     where ε is the desired error rate. For 1M items, use at least 2048-8192.
-   
-   Possible collisions: If width is too small, estimates will be bad.
-   For 1M items with w=64: ~15,000 items per bucket (BAD)
-   For 1M items with w=4096: ~244 items per bucket (GOOD)
-   For fair comparison with Hybrid implementation:
-   - depth = 5 (number of hash functions)
-   - width = 1000 (buckets per row)
-   
-   TIMING NOTE FOR REPORT:
-   - time_compute: The "pure computation" time (each rank's update loop ONLY)
-   - time_total: Includes ALL overhead (read, scatter, reduce, estimate)
-   
-   Your teammate measures compute-only to exclude communication overhead.
-   For the report, show BOTH timings to analyze communication vs computation.
-*/
-#define CS_DEPTH_DEFAULT 5       // Default depth (teammate's setting)
-#define CS_WIDTH_DEFAULT 1000    // Default width (teammate's setting)
+// Global timing accumulators (matching Hybrid structure)
+float totSerialTime = 0.0;
+float totParallelTime = 0.0;      // Compute + Communication time
+float totCommParallelTime = 0.0;  // Compute only time
 
-/* Data format - teammate uses 64 */
-#define MAX_ITEM_LEN 64  // Maximum length of each item string
-
-/* Files */
-#define DEFAULT_OUTPUT "results/estimates.txt"
-#define BENCHMARK_CSV  "results/benchmark_results.csv"
-
-
-//FUNCTION: read_all_items
-
-/* 
-   Reads all items from file into a contiguous character array.
-
-   Each item is padded/truncated to MAX_ITEM_LEN bytes for uniform sizing.
-   This is done because MPI_Scatterv needs to know exactly how many bytes 
-   each rank receives. With variable-length strings, this is complex. 
-   By padding to fixed size, we can easily calculate: bytes_for_rank = items_for_rank * MAX_ITEM_LEN
-   
-   Parameters:
-   filename   : Path to input file
-   count      : OUTPUT - number of items read
-   
-   Returns:
-   Pointer to contiguous array: [item0][item1][item2]...
-   where each [itemN] is MAX_ITEM_LEN bytes
-   Returns NULL on error
-*/
-
+/**
+ * Read all items from file into contiguous buffer
+ */
 char* read_all_items(const char *filename, int *count) 
 {
     FILE *file = fopen(filename, "r");
@@ -106,9 +52,9 @@ char* read_all_items(const char *filename, int *count)
         return NULL;
     }
     
-    // First pass: count lines to allocate exact memory 
+    // First pass: count lines
     int n = 0;
-    char buffer[MAX_ITEM_LEN];
+    char buffer[MAX_ITEM_LENGTH];
     while (fgets(buffer, sizeof(buffer), file)) {
         n++;
     }
@@ -119,400 +65,311 @@ char* read_all_items(const char *filename, int *count)
         return NULL;
     }
     
-    // Allocate contiguous array: n items × MAX_ITEM_LEN bytes each 
-    char *items = (char *)calloc(n * MAX_ITEM_LEN, sizeof(char));
+    // Allocate contiguous array
+    char *items = (char *)calloc(n * MAX_ITEM_LENGTH, sizeof(char));
     if (!items) {
         fprintf(stderr, "ERROR: Cannot allocate memory for %d items\n", n);
         fclose(file);
         return NULL;
     }
     
-    // Second pass: read items into array 
+    // Second pass: read items
     rewind(file);
     int i = 0;
     while (fgets(buffer, sizeof(buffer), file) && i < n) {
-        // Remove trailing newline 
         buffer[strcspn(buffer, "\n\r")] = '\0';
-        
-        // Copy to fixed-width slot (strncpy pads with zeros) 
-        strncpy(&items[i * MAX_ITEM_LEN], buffer, MAX_ITEM_LEN - 1);
-        items[(i + 1) * MAX_ITEM_LEN - 1] = '\0';  // Ensure null termination 
+        strncpy(&items[i * MAX_ITEM_LENGTH], buffer, MAX_ITEM_LENGTH - 1);
+        items[(i + 1) * MAX_ITEM_LENGTH - 1] = '\0';
         i++;
     }
     
     fclose(file);
     *count = n;
-    
-    printf("Read %d items from '%s'\n", n, filename);
     return items;
 }
 
-// FUNCTION: calculate_distribution
-/* 
-   Calculates how to distribute N items among P processes using MPI_Scatterv.
-   
-   HANDLES NON-EVEN DIVISION:
-   --------------------------
-   If N=100 and P=3:
-   - Base count = 100/3 = 33
-   - Remainder = 100%3 = 1
-   - Rank 0: 34 items (gets the extra 1)
-   - Rank 1: 33 items
-   - Rank 2: 33 items
- 
-   Parameters:
-   n_items     : Total number of items
-   size        : Number of MPI processes
-   sendcounts  : OUTPUT array[size] - items per process
-   displs      : OUTPUT array[size] - starting offset for each process
+/**
+ * Compute Count Sketch serially (for baseline timing)
  */
-void calculate_distribution(int n_items, int size, int *sendcounts, int *displs) 
+void ComputeSerialCountSketch(int depth, int width, CountSketch *cs, char* data, int total_lines)
 {
-    int base_count = n_items / size;      // Minimum items per process
-    int remainder = n_items % size;       // Extra items to distribute
-    
-    int offset = 0;
-    for (int i = 0; i < size; i++) 
+    for(int i = 0; i < total_lines; i++) 
     {
-        // First 'remainder' ranks get one extra item
-        sendcounts[i] = base_count + (i < remainder ? 1 : 0);
-        
-        // Displacement is cumulative offset
-        displs[i] = offset;
-        
-        // Update offset for next rank
-        offset += sendcounts[i];
-    }
-    
-    // Debug output
-    printf("Data distribution across %d processes:\n", size);
-    for (int i = 0; i < size; i++) {
-        printf("  Rank %d: %d items (offset %d)\n", i, sendcounts[i], displs[i]);
+        cs_update(cs, &data[i * MAX_ITEM_LENGTH]);
     }
 }
 
-// MAIN FUNCTION
+/**
+ * Compute distribution for MPI_Scatterv
+ */
+void calculate_distribution(int n_items, int size, int *sendcounts, int *displs)
+{
+    int base_count = n_items / size;
+    int remainder = n_items % size;
+    
+    int offset = 0;
+    for (int i = 0; i < size; i++) {
+        sendcounts[i] = base_count + (i < remainder ? 1 : 0);
+        displs[i] = offset;
+        offset += sendcounts[i];
+    }
+}
 
 int main(int argc, char** argv) 
 {
-    // STEP 0: Parse command-line arguments
-    if (argc < 2) {
-        fprintf(stderr, "Usage: mpirun -np <P> %s <input_file> [options]\n", argv[0]);
-        fprintf(stderr, "Options:\n");
-        fprintf(stderr, "  --benchmark        Enable timing output\n");
-        fprintf(stderr, "  --depth <d>        Sketch depth (default: %d)\n", CS_DEPTH_DEFAULT);
-        fprintf(stderr, "  --width <w>        Sketch width (default: %d)\n", CS_WIDTH_DEFAULT);
-        fprintf(stderr, "  --output <file>    Output file for estimates\n");
-        return EXIT_FAILURE;
-    }
+    srand(time(NULL));
     
-    const char *input_file = argv[1];
-    int benchmark_mode = 0;
-    const char *output_file = DEFAULT_OUTPUT;
-    
-    // Count Sketch parameters - use defaults, allow override via CLI
-    int cs_depth = CS_DEPTH_DEFAULT;
-    int cs_width = CS_WIDTH_DEFAULT;
-    
-    // Parse optional arguments
-    for (int i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "--benchmark") == 0) {
-            benchmark_mode = 1;
-        } else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc) {
-            output_file = argv[++i];
-        } else if (strcmp(argv[i], "--depth") == 0 && i + 1 < argc) {
-            cs_depth = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--width") == 0 && i + 1 < argc) {
-            cs_width = atoi(argv[++i]);
-        }
-    }
-    
-    // STEP 1: Initialize MPI
+    // Initialize MPI
     MPI_Init(&argc, &argv);
     
-    int world_rank, world_size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    int size, my_rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     
-    // Print config info (rank 0 only)
-    if (world_rank == 0) {
-        printf("=== MPI Count Sketch Config ===\n");
-        printf("Processes: %d\n", world_size);
-        printf("Depth: %d, Width: %d\n", cs_depth, cs_width);
-        printf("Input: %s\n", input_file);
-        printf("===============================\n");
+    // Parse arguments (matching Hybrid format)
+    if(argc < 5) {
+        if(my_rank == 0) {
+            printf("Usage: mpirun -np <num_processes> %s <num_trials> <num_buckets> <input_file> <scaling_mode>\n", argv[0]);
+            printf("  scaling_mode: 0 = Strong Scaling, 1 = Weak Scaling\n");
+        }
+        MPI_Finalize();
+        return 1;
     }
     
-    // Print process info -- debugging
-    char processor_name[MPI_MAX_PROCESSOR_NAME];
-    int name_len;
-    MPI_Get_processor_name(processor_name, &name_len);
-    printf("MPI Process %d of %d on %s\n", world_rank, world_size, processor_name);
-    // Initialize timing struct
-    BenchmarkTimings timings = {0};
-    double t_start, t_end;
-    double time_total_start = MPI_Wtime();
+    int depth = atoi(argv[1]);        // Actually trials for Hybrid, but we use as depth
+    int width = atoi(argv[2]);        // Buckets = width
+    char* input_file = argv[3];
+    int scaling_mode = atoi(argv[4]); // 0 = Strong, 1 = Weak
     
-    // STEP 2: Rank 0 reads data and generates seeds
-    char *all_items = NULL;    // Only rank 0 allocates this
-    int n_items = 0;
-    uint32_t *seeds = (uint32_t *)malloc(cs_depth * sizeof(uint32_t));
+    // For MPI, we don't have threads (show 1 in output)
+    int n_threads = 1;
     
-    if (world_rank == 0) {
-        t_start = MPI_Wtime();
-        
-        // Read all items from file
-        all_items = read_all_items(input_file, &n_items);
-        if (!all_items) {
-            fprintf(stderr, "ERROR: Failed to read input file\n");
-            MPI_Abort(MPI_COMM_WORLD, 1);
-        }
-        
-        // Generate random seeds for hash functions
-        // Using fixed seed for reproducibility in benchmarks
-        srand(42);
-        for (int i = 0; i < cs_depth; i++) {
+    char* global_data = NULL;
+    int total_lines = 0;
+    int chunk_size = 0;
+    
+    // Generate seeds (same across all ranks)
+    uint32_t seeds[DEPTH];
+    if(my_rank == 0) {
+        srand(42);  // Fixed seed for reproducibility
+        for(int i = 0; i < DEPTH; i++) {
             seeds[i] = rand();
         }
+    }
+    MPI_Bcast(seeds, DEPTH, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+    
+    // Rank 0 reads data
+    if(my_rank == 0) {
+        FILE *file = fopen(input_file, "r");
+        if (file == NULL) {
+            perror("Unable to open file!");
+            MPI_Finalize();
+            return EXIT_FAILURE;
+        }
         
-        t_end = MPI_Wtime();
-        timings.time_read = t_end - t_start;
-        printf("Rank 0: Read %d items in %.6f seconds\n", n_items, timings.time_read);
-    }
-    
-    // STEP 3: Broadcast metadata and seeds to all ranks
-    t_start = MPI_Wtime();
-    
-    // Broadcast number of items (all ranks need this to calculate their share)
-    MPI_Bcast(&n_items, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    
-    // Broadcast seeds (all ranks need identical hash functions!)
-    MPI_Bcast(seeds, cs_depth, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
-    
-    t_end = MPI_Wtime();
-    timings.time_bcast = t_end - t_start;
-    
-    // STEP 4: Calculate data distribution for MPI_Scatterv
-
-    /*
-      sendcounts[i] = number of ITEMS for rank i
-      displs[i]     = starting ITEM index for rank i
-     
-      For MPI_Scatterv, we need to convert to BYTES:
-      byte_sendcounts[i] = sendcounts[i] * MAX_ITEM_LEN
-      byte_displs[i]     = displs[i] * MAX_ITEM_LEN
-     */
-    int *sendcounts = (int *)malloc(world_size * sizeof(int));
-    int *displs = (int *)malloc(world_size * sizeof(int));
-    int *byte_sendcounts = (int *)malloc(world_size * sizeof(int));
-    int *byte_displs = (int *)malloc(world_size * sizeof(int));
-    
-    // Calculate item-level distribution
-    calculate_distribution(n_items, world_size, sendcounts, displs);
-    
-    // Convert to byte-level for MPI_Scatterv
-    for (int i = 0; i < world_size; i++) {
-        byte_sendcounts[i] = sendcounts[i] * MAX_ITEM_LEN;
-        byte_displs[i] = displs[i] * MAX_ITEM_LEN;
-    }
-    
-    // Each rank allocates buffer for its chunk 
-    int my_item_count = sendcounts[world_rank];
-    char *my_items = (char *)malloc(my_item_count * MAX_ITEM_LEN * sizeof(char));
-    if (!my_items) {
-        fprintf(stderr, "Rank %d: ERROR allocating receive buffer\n", world_rank);
-        MPI_Abort(MPI_COMM_WORLD, 1);
-    }
-    
-    // STEP 5: Scatter data chunks using MPI_Scatterv
-    t_start = MPI_Wtime();
-    
-    /* 
-    MPI_Scatterv signature:
-        sendbuf     - buffer containing all data (only significant at root)
-        sendcounts  - array of send counts for each rank
-        displs      - array of displacements for each rank
-        sendtype    - datatype of send buffer elements
-        recvbuf     - buffer to receive data
-        recvcount   - number of elements to receive
-        recvtype    - datatype of receive buffer elements
-        root        - rank of sending process
-        comm        - communicator
-     */
-    MPI_Scatterv(
-        all_items,                      // Send buffer (only used by rank 0)
-        byte_sendcounts,                // Bytes to send to each rank
-        byte_displs,                    // Byte offset for each rank
-        MPI_CHAR,                       // Sending chars/bytes
-        my_items,                       // Receive buffer
-        my_item_count * MAX_ITEM_LEN,   // Bytes this rank receives
-        MPI_CHAR,                       // Receiving chars/bytes
-        0,                              // Root rank (sender)
-        MPI_COMM_WORLD
-    );
-    
-    // Synchronize before timing
-    MPI_Barrier(MPI_COMM_WORLD);
-    t_end = MPI_Wtime();
-    timings.time_scatter = t_end - t_start;
-    
-    printf("Rank %d: Received %d items\n", world_rank, my_item_count);
-    
-    // Rank 0 can free the full data now
-    if (world_rank == 0) {
-        free(all_items);
-        all_items = NULL;
-    }
-    
-    // STEP 6: Build local Count Sketch from received items
-    t_start = MPI_Wtime();
-    
-    // Create local Count Sketch with shared seeds
-    CountSketch *local_cs = cs_create_with_seeds(cs_depth, cs_width, seeds);
-    if (!local_cs) {
-        fprintf(stderr, "Rank %d: ERROR creating Count Sketch\n", world_rank);
-        MPI_Abort(MPI_COMM_WORLD, 1);
-    }
-    
-    // Process local items
-    for (int i = 0; i < my_item_count; i++) 
-    {
-        char *item = &my_items[i * MAX_ITEM_LEN];
-        cs_update(local_cs, item);
-    }
+        // Count lines
+        char item[MAX_ITEM_LENGTH];
+        while (fgets(item, sizeof(item), file)) {
+            total_lines++;
+        }
+        fclose(file);
+        printf("Total lines in input file: %d\n", total_lines);
         
-    // Ensure all ranks finish before timing
-    MPI_Barrier(MPI_COMM_WORLD);  
-    t_end = MPI_Wtime();
-    timings.time_compute = t_end - t_start;
+        // Weak scaling: adjust total lines
+        if(scaling_mode == 1) {
+            chunk_size = total_lines / 64;  // Base chunk from 8M/64
+            total_lines = chunk_size * size; // Scale with processes
+        } else {
+            chunk_size = total_lines / size;
+        }
+        
+        // Allocate and read data
+        global_data = (char*)malloc(total_lines * MAX_ITEM_LENGTH * sizeof(char));
+        file = fopen(input_file, "r");
+        if (file == NULL) {
+            perror("Unable to open file!");
+            free(global_data);
+            MPI_Finalize();
+            return EXIT_FAILURE;
+        }
+        
+        for(int i = 0; i < total_lines; i++) {
+            if(fgets(item, sizeof(item), file) == NULL) break;
+            item[strcspn(item, "\n\r")] = '\0';
+            strncpy(&global_data[i * MAX_ITEM_LENGTH], item, MAX_ITEM_LENGTH - 1);
+            global_data[(i + 1) * MAX_ITEM_LENGTH - 1] = '\0';
+        }
+        fclose(file);
+    }
     
-    printf("Rank %d: Processed %d items in %.6f seconds\n", 
-           world_rank, my_item_count, timings.time_compute);
+    // Broadcast metadata
+    MPI_Bcast(&total_lines, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&chunk_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
     
-    // STEP 7: Reduce all partial tables at rank 0 using MPI_Reduce
-    t_start = MPI_Wtime();
+    // Calculate distribution
+    int *sendcounts = (int*)malloc(size * sizeof(int));
+    int *displs = (int*)malloc(size * sizeof(int));
+    calculate_distribution(total_lines, size, sendcounts, displs);
     
-    // Flatten local table to 1D for MPI communication
-    int table_size = cs_depth * cs_width;
-    int32_t *local_flat = cs_flatten(local_cs);
+    // Allocate local buffer
+    int my_count = sendcounts[my_rank];
+    char* local_data = (char*)malloc(my_count * MAX_ITEM_LENGTH * sizeof(char));
     
-    // Allocate receive buffer at rank 0 only
-    int32_t *result_flat = NULL;
-    if (world_rank == 0) {
-        result_flat = (int32_t *)malloc(table_size * sizeof(int32_t));
-        if (!result_flat) {
-            fprintf(stderr, "Rank 0: ERROR allocating result buffer\n");
-            MPI_Abort(MPI_COMM_WORLD, 1);
+    // Convert to bytes for MPI_Scatterv
+    int *byte_sendcounts = (int*)malloc(size * sizeof(int));
+    int *byte_displs = (int*)malloc(size * sizeof(int));
+    for(int i = 0; i < size; i++) {
+        byte_sendcounts[i] = sendcounts[i] * MAX_ITEM_LENGTH;
+        byte_displs[i] = displs[i] * MAX_ITEM_LENGTH;
+    }
+    
+    // Create final sketch pointer (for rank 0)
+    CountSketch* final_sketch = NULL;
+    
+    // Run multiple iterations for averaging
+    for(int iter = 0; iter < ITERATIONS; iter++) {
+        float serialTime = 0.0, parallelTime = 0.0, commTime = 0.0;
+        
+        // --- Serial baseline (rank 0 only) ---
+        if(my_rank == 0) {
+            CountSketch* serial_cs = cs_create_with_seeds(DEPTH, width, seeds);
+            
+            double t1 = MPI_Wtime();
+            ComputeSerialCountSketch(DEPTH, width, serial_cs, global_data, total_lines);
+            double t2 = MPI_Wtime();
+            
+            serialTime = (float)(t2 - t1);
+            cs_destroy(serial_cs);
+        }
+        
+        MPI_Barrier(MPI_COMM_WORLD);
+        
+        // --- Parallel computation ---
+        double t_total_start = MPI_Wtime();
+        
+        // Scatter data
+        MPI_Scatterv(global_data, byte_sendcounts, byte_displs, MPI_CHAR,
+                     local_data, my_count * MAX_ITEM_LENGTH, MPI_CHAR,
+                     0, MPI_COMM_WORLD);
+        
+        MPI_Barrier(MPI_COMM_WORLD);
+        double t_compute_start = MPI_Wtime();
+        
+        // Build local Count Sketch
+        CountSketch* local_cs = cs_create_with_seeds(DEPTH, width, seeds);
+        for(int i = 0; i < my_count; i++) {
+            cs_update(local_cs, &local_data[i * MAX_ITEM_LENGTH]);
+        }
+        
+        MPI_Barrier(MPI_COMM_WORLD);
+        double t_compute_end = MPI_Wtime();
+        
+        // Reduce tables
+        int table_size = DEPTH * width;
+        int32_t *local_flat = cs_flatten(local_cs);
+        int32_t *result_flat = NULL;
+        
+        if(my_rank == 0) {
+            result_flat = (int32_t*)malloc(table_size * sizeof(int32_t));
+        }
+        
+        MPI_Reduce(local_flat, result_flat, table_size, MPI_INT32_T, MPI_SUM, 0, MPI_COMM_WORLD);
+        
+        MPI_Barrier(MPI_COMM_WORLD);
+        double t_total_end = MPI_Wtime();
+        
+        // Calculate times
+        commTime = (float)(t_compute_end - t_compute_start);  // Compute only
+        parallelTime = (float)(t_total_end - t_total_start);  // Total with communication
+        
+        // Accumulate
+        totSerialTime += serialTime;
+        totCommParallelTime += commTime;
+        totParallelTime += parallelTime;
+        
+        // Keep final sketch from last iteration
+        if(iter == ITERATIONS - 1 && my_rank == 0) {
+            final_sketch = cs_unflatten(result_flat, DEPTH, width, seeds);
+        }
+        
+        // Cleanup iteration
+        free(local_flat);
+        if(my_rank == 0) free(result_flat);
+        cs_destroy(local_cs);
+    }
+    
+    // Rank 0 outputs results
+    if(my_rank == 0) {
+        // Estimate some frequencies (for demonstration)
+        if(scaling_mode == 1) {
+            total_lines = chunk_size * size;
+        }
+        for(int i = 0; i < 10 && i < total_lines; i++) {
+            int32_t estimate = cs_estimate(final_sketch, &global_data[i * MAX_ITEM_LENGTH]);
+            printf("Estimated frequency of %s: %d\n", &global_data[i * MAX_ITEM_LENGTH], estimate);
+        }
+        cs_destroy(final_sketch);
+        free(global_data);
+        
+        // Calculate averages
+        float avgSerialTime = totSerialTime / ITERATIONS;
+        float avgParallelTime = totParallelTime / ITERATIONS;
+        float avgCommTime = totCommParallelTime / ITERATIONS;
+        
+        if(scaling_mode == 1) {
+            // Weak Scaling output
+            float weakScalingCompute = avgSerialTime / avgCommTime;
+            float weakScalingComm = avgSerialTime / avgParallelTime;
+            
+            printf("| Processes | N_Threads | Total Lines | Serial Time | Compute Time | Compute + Communication Time | Weak Scaling Compute | Weak Scaling Communication |\n");
+            printf("|-----------|-----------|-------------|-------------|--------------|------------------------------|----------------------|----------------------------|\n");
+            printf("| %9d | %9d | %11d | %11.6f | %12.6f | %28.6f | %20.6f | %26.6f |\n",
+                   size, n_threads, chunk_size * size, avgSerialTime, avgCommTime, avgParallelTime,
+                   weakScalingCompute, weakScalingComm);
+            
+            // Save to CSV
+            char csv_path[256];
+            snprintf(csv_path, sizeof(csv_path), "results/weak_scaling_mpi_8388608.csv");
+            FILE *csv_file = fopen(csv_path, "a");
+            if(csv_file) {
+                fprintf(csv_file, "%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                        size, n_threads, chunk_size * size, avgSerialTime, avgCommTime, avgParallelTime,
+                        weakScalingCompute, weakScalingComm);
+                fclose(csv_file);
+            }
+        } else {
+            // Strong Scaling output
+            float speedupCompute = avgSerialTime / avgCommTime;
+            float efficiencyCompute = (speedupCompute / size) * 100;
+            float speedupComm = avgSerialTime / avgParallelTime;
+            float efficiencyComm = (speedupComm / size) * 100;
+            
+            printf("| Processes | N_Threads | Serial Time | Compute Time | Compute + Communication Time | Speedup Compute | Efficiency Compute | Speedup Communication | Efficiency Communication |\n");
+            printf("|-----------|-----------|-------------|--------------|------------------------------|-----------------|--------------------|-----------------------|--------------------------|\n");
+            printf("| %9d | %9d | %11.6f | %12.6f | %28.6f | %15.6f | %17.2f%% | %21.6f | %23.2f%% |\n",
+                   size, n_threads, avgSerialTime, avgCommTime, avgParallelTime,
+                   speedupCompute, efficiencyCompute, speedupComm, efficiencyComm);
+            
+            // Save to CSV
+            char csv_path[256];
+            snprintf(csv_path, sizeof(csv_path), "results/performance_mpi_%d.csv", total_lines);
+            FILE *csv_file = fopen(csv_path, "a");
+            if(csv_file) {
+                fprintf(csv_file, "%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                        size, n_threads, avgSerialTime, avgCommTime, avgParallelTime,
+                        speedupCompute, efficiencyCompute, speedupComm, efficiencyComm);
+                fclose(csv_file);
+            }
         }
     }
     
-    /*
-     MPI_Reduce signature:
-       sendbuf  - buffer containing local data
-       recvbuf  - buffer to receive result (only significant at root)
-       count    - number of elements
-       datatype - datatype of elements
-       op       - reduction operation (MPI_SUM combines all values!)
-       root     - rank receiving the result
-       comm     - communicator
-     
-     After this call:
-       result_flat[i] = Σ local_flat[i] across all ranks. This is because of Count Sketch's additive nature.
-     */
-    MPI_Reduce(
-        local_flat,      // Send buffer (each rank's partial table)
-        result_flat,     // Receive buffer (only used at rank 0)
-        table_size,      // Number of elements: d × w
-        MPI_INT32_T,     // Element type: 32-bit signed integers
-        MPI_SUM,         // Operation: SUM all partial tables
-        0,               // Root rank (receiver)
-        MPI_COMM_WORLD
-    );
-    
-    MPI_Barrier(MPI_COMM_WORLD);
-    t_end = MPI_Wtime();
-    timings.time_reduce = t_end - t_start;
-    
-    // Clean up local data
-    free(local_flat);
-    cs_destroy(local_cs);
-    free(my_items);
-    
-    // STEP 8: Rank 0 estimates frequencies and outputs results
-    if (world_rank == 0) {
-        t_start = MPI_Wtime();
-        
-        // Reconstruct Count Sketch from flattened result
-        CountSketch *final_cs = cs_unflatten(result_flat, cs_depth, cs_width, seeds);
-        if (!final_cs) {
-            fprintf(stderr, "ERROR: Failed to unflatten result\n");
-            MPI_Abort(MPI_COMM_WORLD, 1);
-        }
-        
-        // Read items again for frequency estimation
-        // (In production, you'd keep unique items or query specific ones)
-        int query_count;
-        char *query_items = read_all_items(input_file, &query_count);
-        
-        // Open output file
-        FILE *out = fopen(output_file, "w");
-        if (!out) {
-            fprintf(stderr, "WARNING: Cannot open output file, using stdout\n");
-            out = stdout;
-        }
-        
-        // Estimate and output frequencies
-        fprintf(out, "# Frequency Estimates (MPI with %d processes)\n", world_size);
-        fprintf(out, "# Item, Estimated Frequency\n");
-        
-        // Process unique items to avoid duplicates in output
-        // For simplicity, just show first 100 or all if less
-        int max_output = (query_count < 100) ? query_count : 100;
-        for (int i = 0; i < max_output; i++) {
-            char *item = &query_items[i * MAX_ITEM_LEN];
-            int32_t estimate = cs_estimate(final_cs, item);
-            fprintf(out, "%s, %d\n", item, estimate);
-        }
-        
-        if (out != stdout) {
-            fclose(out);
-            printf("Results written to '%s'\n", output_file);
-        }
-        
-        t_end = MPI_Wtime();
-        timings.time_estimate = t_end - t_start;
-        
-        // Clean up
-        free(query_items);
-        cs_destroy(final_cs);
-        free(result_flat);
-    }
-    
-    // STEP 9: Output timing results
-    double time_total_end = MPI_Wtime();
-    timings.time_total = time_total_end - time_total_start;
-    
-    if (benchmark_mode) {
-        print_timings(&timings, world_rank, world_size, n_items);
-        
-        if (world_rank == 0) {
-            write_timings_csv(BENCHMARK_CSV, &timings, world_size, n_items);
-            printf("Benchmark data appended to '%s'\n", BENCHMARK_CSV);
-        }
-    }
-    
-    // STEP 10: Cleanup and finalize
-    free(seeds);
+    // Cleanup
+    free(local_data);
     free(sendcounts);
     free(displs);
     free(byte_sendcounts);
     free(byte_displs);
     
     MPI_Finalize();
-    
-    if (world_rank == 0) {
-        printf("\n MPI Count Sketch completed successfully \n");
-    }
-    
-    return EXIT_SUCCESS;
+    return 0;
 }
