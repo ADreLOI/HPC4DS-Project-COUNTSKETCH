@@ -24,11 +24,8 @@ gcc() {
 }
 gcc --version
 
-# Working Dir
+# Working Dir - go to where job was submitted (project root)
 cd $PBS_O_WORKDIR
-
-# Move to project root
-cd ..
 
 # Run benchmarks for main size (8M)
 echo "=== Running 8M Strong Scaling ==="
