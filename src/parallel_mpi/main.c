@@ -327,9 +327,9 @@ int main(int argc, char** argv)
                    size, n_threads, chunk_size * size, avgSerialTime, avgCommTime, avgParallelTime,
                    weakScalingCompute, weakScalingComm);
             
-            // Save to CSV
+            // Save to CSV - use total_lines for dynamic filename
             char csv_path[256];
-            snprintf(csv_path, sizeof(csv_path), "results/weak_scaling_mpi_8388608.csv");
+            snprintf(csv_path, sizeof(csv_path), "results/weak_scaling_mpi_%d.csv", total_lines);
             FILE *csv_file = fopen(csv_path, "a");
             if(csv_file) {
                 fprintf(csv_file, "%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n",
