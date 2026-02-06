@@ -9,7 +9,7 @@
 #PBS -o ./countSketchMPI.o
 #PBS -e ./countSketchMPI.e
 # Queue name
-#PBS -q short_cpuQ
+#PBS -q short_HPC4DS
 # Set the maximum wall time
 #PBS -l walltime=0:30:00
 # Number of nodes, cpus, mpi processors and amount of memory
