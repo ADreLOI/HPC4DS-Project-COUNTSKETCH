@@ -1,0 +1,43 @@
+#!/bin/bash
+# PBS Job Script - MPI Count Sketch Benchmarks
+#
+# Submit with: qsub scripts/benchmark_mpi.pbs
+
+# Job name
+#PBS -N CountSketch_MPI
+# Output files
+#PBS -o ./countSketchMPI.o
+#PBS -e ./countSketchMPI.e
+# Queue name
+#PBS -q short_HPC4DS
+# Set the maximum wall time
+#PBS -l walltime=0:30:00
+# Number of nodes, cpus, mpi processors and amount of memory
+#PBS -l select=1:ncpus=64:mpiprocs=64:mem=5gb
+
+# Load modules for MPI
+module load gcc91
+module load mpich-3.2.1--gcc-9.1.0
+
+gcc() {
+    gcc-9.1.0 "$@"
+}
+gcc --version
+
+# Working Dir - go to where job was submitted (project root)
+cd $PBS_O_WORKDIR
+
+# Run benchmarks for main size (8M)
+echo "=== Running 8M Strong Scaling ==="
+bash scripts/benchmark_performance_mpi.sh
+
+echo "=== Running 8M Weak Scaling ==="
+bash scripts/weak_scaling_mpi.sh
+
+# Run benchmarks for comparison sizes (500K, 1M)
+echo "=== Running Multi-Size Strong Scaling (500K, 1M, 8M) ==="
+bash scripts/benchmark_all_sizes_mpi.sh
+
+# Run weak scaling for all sizes
+echo "=== Running Multi-Size Weak Scaling (500K, 1M, 8M) ==="
+bash scripts/weak_scaling_multisize_mpi.sh
