@@ -370,23 +370,7 @@ CountSketch* cs_unflatten(const int32_t *flat, int d, int w, uint32_t *seeds)
 
 // FUNCTION: print_timings
 /*
- Displays benchmark timing results in a formatted way.
- 
- OUTPUT EXAMPLE:
-   ============= BENCHMARK RESULTS =============
-   MPI Processes: 4
-   Total Items:   1000000
-   
-   Phase Timings:
-     Read:     0.123456 s
-     Bcast:    0.000234 s
-     Scatter:  0.045678 s
-     Compute:  1.234567 s
-     Reduce:   0.012345 s
-     Estimate: 0.098765 s
-   
-   TOTAL:      1.515045 s
-   =============================================
+ Displays benchmark timing results in a formatted way.   
  */
 void print_timings(const BenchmarkTimings *timings, int rank, int size, int n_items) 
 {

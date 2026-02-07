@@ -56,7 +56,7 @@ p1 <- ggplot(perf_8m, aes(x = Processes)) +
   geom_point(aes(y = Speedup_Compute, color = "MPI Speedup"), size = 3) +
   geom_line(aes(y = Processes, color = "Ideal Linear", linetype = "Ideal Linear"), linewidth = 1) +
   scale_x_continuous(breaks = perf_8m$Processes, trans = "log2") +
-  scale_y_continuous(breaks = seq(0, 70, 10)) +
+  scale_y_continuous(breaks = perf_8m$Processes, trans = "log2") +
   scale_color_manual(values = c("MPI Speedup" = col_compute, "Ideal Linear" = col_ideal)) +
   scale_linetype_manual(values = c("MPI Speedup" = "solid", "Ideal Linear" = "dashed")) +
   labs(
@@ -76,7 +76,7 @@ p2 <- ggplot(perf_8m, aes(x = Processes)) +
   geom_point(aes(y = Speedup_Comm, color = "MPI Speedup"), size = 3) +
   geom_line(aes(y = Processes, color = "Ideal Linear", linetype = "Ideal Linear"), linewidth = 1) +
   scale_x_continuous(breaks = perf_8m$Processes, trans = "log2") +
-  scale_y_continuous(breaks = seq(0, 70, 10)) +
+  scale_y_continuous(breaks = perf_8m$Processes, trans = "log2") +
   scale_color_manual(values = c("MPI Speedup" = col_comm, "Ideal Linear" = col_ideal)) +
   scale_linetype_manual(values = c("MPI Speedup" = "solid", "Ideal Linear" = "dashed")) +
   labs(
@@ -222,6 +222,7 @@ p8 <- ggplot(perf_all, aes(x = Processes, y = Speedup_Comm, color = Size)) +
   geom_point(size = 3) +
   geom_line(aes(y = Processes), linetype = "dashed", color = col_ideal, linewidth = 1, show.legend = FALSE) +
   scale_x_continuous(breaks = c(2, 4, 8, 16, 32, 64), trans = "log2") +
+  scale_y_continuous(breaks = c(2, 4, 8, 16, 32, 64), trans = "log2") +
   scale_color_manual(values = colors_size) +
   labs(
     title = "Strong Scaling Comparison: Speedup vs. Dataset Size",

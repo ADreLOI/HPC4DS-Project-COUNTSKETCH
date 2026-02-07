@@ -64,9 +64,17 @@ notes/
 
 docs/
 
-# Charts
 charts/
 
-# Results
-results/Hybrid/
+Paper/
+
+src/utils/data analysis/cover_visualizations.R
+src/utils/data analysis/plotter_mpi.R
+src/utils/data analysis/plotter_mpi.py
+
+
+
+
+
+
 
