@@ -72,6 +72,18 @@ src/utils/data analysis/cover_visualizations.R
 src/utils/data analysis/plotter_mpi.R
 src/utils/data analysis/plotter_mpi.py
 
+src/generator/generator_base.py
+
+results/benchmark_results.csv
+
+detasets/input_data_100.txt
+detasets/input_data_10000.txt
+datasets/input_data_8M.txt
+
+scripts/run_benchmarks.sh
+scripts/script.sh
+
+
 
 
 
