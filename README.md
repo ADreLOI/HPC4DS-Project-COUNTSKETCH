@@ -93,7 +93,7 @@ Both strategies exploit the **linearity** of Count Sketch: partial tables from d
 
 | Software | Version | Purpose |
 |----------|---------|---------|
-| GCC | 9.1+ | C99 compiler |
+| GCC | 9.1+ | C compiler |
 | CMake | 3.10+ | Build system |
 | MPI (MPICH / OpenMPI) | 3.2+ | Distributed-memory parallelism |
 | OpenMP | 4.5+ | Shared-memory parallelism (hybrid) |
