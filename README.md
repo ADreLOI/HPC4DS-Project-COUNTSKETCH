@@ -52,7 +52,7 @@
 
 ---
 
-This project implements and evaluates two parallel strategies for the **Count Sketch** algorithm—a probabilistic data structure for efficient frequency estimation in massive data streams. Count Sketch offers sublinear space complexity with bounded error guarantees, making it ideal for heavy hitter detection in network monitoring, real-time query tracking, and large-scale data analytics.
+This project implements and evaluates two parallel strategies for the **Count Sketch** algorithm, a probabilistic data structure for efficient frequency estimation in massive data streams. Count Sketch offers sublinear space complexity with bounded error guarantees, making it ideal for heavy hitter detection in network monitoring, real-time query tracking, and large-scale data analytics.
 
 We provide:
 1. A **sequential baseline** in C
@@ -145,7 +145,7 @@ python3 src/generator/generator.py --batch
 ```
 
 > [!TIP]
-> Pre-generated datasets for 100, 10K, 500K, 1M, and 8M items are already included in the `datasets/` directory.
+> Pre-generated datasets for 500K, 1M, and 8M items are already included in the `datasets/` directory.
 
 <!--=========================================================================-->
 
@@ -215,7 +215,7 @@ PBS configurations request:
 
 ---
 
-Automated benchmark scripts run strong and weak scaling tests across multiple dataset sizes:
+Automated benchmark scripts run strong and weak scaling tests across multiple dataset sizes. e.g.:
 
 ```bash
 # Strong scaling (MPI, 8M dataset)
@@ -235,7 +235,7 @@ bash scripts/weak_scaling_hybrid.sh
 Results are saved as CSV files in the `results/` directory and can be visualized with:
 
 ```bash
-python3 src/utils/data\ analysis/plotter_mpi.py
+python3 src/utils/data\ analysis/plotter.py
 ```
 
 <!--=========================================================================-->
@@ -246,34 +246,31 @@ python3 src/utils/data\ analysis/plotter_mpi.py
 
 ```
 HPC4DS-Project-COUNTSKETCH/
-├── CMakeLists.txt                  # Build configuration
+├── CMakeLists.txt                   # Build configuration
 ├── README.md
 ├── LICENSE
 │
 ├── src/
-│   ├── main.c                      # Sequential implementation
-│   ├── count_sketch_algorithm.c    # Core CS algorithm (sequential)
+│   ├── main.c                       # Sequential implementation
+│   ├── count_sketch_algorithm.c     # Core CS algorithm (sequential)
 │   ├── include/
-│   │   ├── count_sketch.h          # Data structures & API
-│   │   └── count_sketch_mpi.h      # MPI utilities header
+│   │   ├── count_sketch.h           # Data structures & API
+│   │   └── count_sketch_mpi.h       # MPI utilities header
 │   ├── parallel_mpi/
-│   │   ├── main.c                  # Pure MPI entry point
-│   │   └── count_sketch_algorithm.c# CS + MPI utilities (flatten, unflatten, etc.)
+│   │   ├── main.c                   # Pure MPI entry point
+│   │   └── count_sketch_algorithm.c # CS + MPI utilities (flatten, unflatten, etc.)
 │   ├── parallel_mpi_openMP/
-│   │   ├── main.c                  # Hybrid entry point
-│   │   └── count_sketch_algorithm.c# CS with OpenMP atomic updates
+│   │   ├── main.c                   # Hybrid entry point
+│   │   └── count_sketch_algorithm.c # CS with OpenMP atomic updates
 │   ├── generator/
-│   │   └── generator.py            # Zipf dataset generator
+│   │   └── generator.py             # Zipf dataset generator
 │   └── utils/
 │       └── data analysis/
-│           ├── plotter_mpi.py      # MPI results visualization
-│           └── plotter.py          # General plotting utilities
+│           └── plotter.py           # General plotting utilities
 │
-├── datasets/                        # Input datasets (100 → 8M items)
+├── datasets/                        # Input datasets (100K → 8M items)
 ├── results/                         # CSV benchmark outputs
 ├── scripts/                         # PBS job scripts & benchmark runners
-├── Paper/                           # IEEE-format research paper (LaTeX)
-├── docs/                            # Cluster guide & design documents
 └── test/                            # Unit tests
 ```
 
@@ -293,7 +290,6 @@ HPC4DS-Project-COUNTSKETCH/
 - The hybrid approach provides flexibility through **two-level parallelism** but is constrained by atomic contention on high-traffic sketch buckets
 - Both strategies are **communication-bound** at high process counts; the `MPI_Reduce` phase dominates total execution time
 
-Full analysis is available in the accompanying IEEE-format paper under `Paper/`.
 
 <!--=========================================================================-->
 
