@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 # Parallel Count Sketch for High-Performance Frequency Estimation
 
 ---
@@ -318,9 +320,12 @@ HPC4DS-Project-COUNTSKETCH/
 
 ---
 
-- [Andrea Lo Iacono](https://github.com/ADreLOI) ([andrea.loiacono@studenti.unitn.it](mailto:andrea.loiacono@studenti.unitn.it))
+| Team member | GitHub | LinkedIn | Email |
+| --- | --- | --- | --- |
+| Andrea Lo Iacono | [@ADreLOI](https://github.com/ADreLOI) | [LinkedIn](https://www.linkedin.com/in/adreloi) | [andrea.loiacono@studenti.unitn.it](mailto:andrea.loiacono@studenti.unitn.it) |
+| Matthew De Marco | [@MattDema](https://github.com/MattDema) | Profile link pending confirmation | [matthew.demarco@studenti.unitn.it](mailto:matthew.demarco@studenti.unitn.it) |
 
-- [Matthew De Marco](https://github.com/MattDema) ([matthew.demarco@studenti.unitn.it](mailto:matthew.demarco@studenti.unitn.it))
+> LinkedIn profile links are included only when confirmed, so the README never directs visitors to the wrong person.
 
 <!--=========================================================================-->
 
@@ -333,7 +338,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ---
 
 <p align="center">
-  <a href="#parallel-count-sketch-for-high-performance-frequency-estimation" style="text-decoration: none;">
+  <a href="#top" style="text-decoration: none;">
     <img src="https://img.icons8.com/ios-filled/50/000000/up.png" alt="Back to Top" width="40" height="40"/>
     <br>
     <strong>Back to Top</strong>
