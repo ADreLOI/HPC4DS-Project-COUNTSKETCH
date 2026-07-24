@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![License](https://img.shields.io/github/license/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logoSize=auto&labelColor=blue&color=black)  ![Language](https://img.shields.io/badge/C-Implementation?style=for-the-badge&label=Language&labelColor=orange&color=black)  ![Stars](https://img.shields.io/github/stars/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logo=github&logoColor=black&logoSize=auto&labelColor=gold&color=black)  ![Contributors](https://img.shields.io/github/contributors/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logo=github&logoColor=white&logoSize=auto&label=contributors&labelColor=green&color=black)  ![Repo Size](https://img.shields.io/github/repo-size/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&labelColor=purple&color=black)
+![Version](https://img.shields.io/badge/version-1.0.0-2563eb?style=for-the-badge)  ![License](https://img.shields.io/github/license/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logoSize=auto&labelColor=blue&color=black)  ![Language](https://img.shields.io/badge/C-Implementation?style=for-the-badge&label=Language&labelColor=orange&color=black)  ![Stars](https://img.shields.io/github/stars/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logo=github&logoColor=black&logoSize=auto&labelColor=gold&color=black)  ![Contributors](https://img.shields.io/github/contributors/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logo=github&logoColor=white&logoSize=auto&label=contributors&labelColor=green&color=black)  ![Repo Size](https://img.shields.io/github/repo-size/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&labelColor=purple&color=black)
 
 </div>
 
