@@ -6,7 +6,21 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-2563eb?style=for-the-badge)  ![License](https://img.shields.io/github/license/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logoSize=auto&labelColor=blue&color=black)  ![Language](https://img.shields.io/badge/C-Implementation?style=for-the-badge&label=Language&labelColor=orange&color=black)  ![Stars](https://img.shields.io/github/stars/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logo=github&logoColor=black&logoSize=auto&labelColor=gold&color=black)  ![Contributors](https://img.shields.io/github/contributors/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logo=github&logoColor=white&logoSize=auto&label=contributors&labelColor=green&color=black)  ![Repo Size](https://img.shields.io/github/repo-size/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&labelColor=purple&color=black)
+![Version](https://img.shields.io/badge/version-1.0.0-2563EB?style=for-the-badge)
+[![Stars](https://img.shields.io/github/stars/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge&logo=github&label=Stars)](https://github.com/ADreLOI/HPC4DS-Project-COUNTSKETCH/stargazers)
+[![Contributors](https://img.shields.io/github/contributors/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge)](https://github.com/ADreLOI/HPC4DS-Project-COUNTSKETCH/graphs/contributors)
+[![Forks](https://img.shields.io/github/forks/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge)](https://github.com/ADreLOI/HPC4DS-Project-COUNTSKETCH/forks)
+[![Issues](https://img.shields.io/github/issues/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge)](https://github.com/ADreLOI/HPC4DS-Project-COUNTSKETCH/issues)
+![Repository Size](https://img.shields.io/github/repo-size/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge)
+![Last Commit](https://img.shields.io/github/last-commit/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge)
+![License](https://img.shields.io/github/license/ADreLOI/HPC4DS-Project-COUNTSKETCH?style=for-the-badge)
+
+</div>
+
+<div align="center">
+
+![Course](https://img.shields.io/badge/course-HPC%20for%20Data%20Science-0F766E?style=for-the-badge)
+![Parallelism](https://img.shields.io/badge/parallelism-MPI%20%7C%20OpenMP-7C3AED?style=for-the-badge)
 
 </div>
 
@@ -311,7 +325,7 @@ HPC4DS-Project-COUNTSKETCH/
 
 ---
 
-**High Performance Computing for Data Science** –  ***Assoc. prof. <a href="https://webapps.unitn.it/du/it/Persona/PER0228723/Didattica">Sandro Luigi Fiore</a>***  
+Count Sketch was developed for the **High Performance Computing for Data Science** course at the University of Trento under the guidance of [**Assoc. Prof. Sandro Luigi Fiore**](https://webapps.unitn.it/du/it/Persona/PER0228723/Didattica). We thank him for the course foundations, technical guidance, and feedback provided during the project.
 
 
 <!--=========================================================================-->
