@@ -336,7 +336,7 @@ Count Sketch was developed for the **High Performance Computing for Data Science
 
 | Team member | GitHub | LinkedIn | Email |
 | --- | --- | --- | --- |
-| Andrea Lo Iacono | [@ADreLOI](https://github.com/ADreLOI) | [LinkedIn](https://www.linkedin.com/in/adreloi) | [andrea.loiacono@studenti.unitn.it](mailto:andrea.loiacono@studenti.unitn.it) |
+| Andrea Lo Iacono | [@ADreLOI](https://github.com/ADreLOI) | [Andrea Lo Iacono](https://www.linkedin.com/in/adreloi) | [andrea.loiacono@studenti.unitn.it](mailto:andrea.loiacono@studenti.unitn.it) |
 | Matthew De Marco | [@MattDema](https://github.com/MattDema) | [Matthew De Marco](https://www.linkedin.com/in/matt-de-marco/) | [matthew.demarco@studenti.unitn.it](mailto:matthew.demarco@studenti.unitn.it) |
 
 > LinkedIn profile links are included only when confirmed, so the README never directs visitors to the wrong person.
